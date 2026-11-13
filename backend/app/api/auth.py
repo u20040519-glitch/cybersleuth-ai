@@ -203,6 +203,7 @@ async def verify_email(
 
 @router.post("/resend-verification", status_code=status.HTTP_200_OK)
 async def resend_verification(
+    request: Request,
     request_data: EmailVerificationRequest,
     db: AsyncSession = Depends(get_db),
 ) -> JSONResponse:
@@ -220,6 +221,7 @@ async def resend_verification(
 
 @router.post("/forgot-password", status_code=status.HTTP_200_OK)
 async def forgot_password(
+    request: Request,
     request_data: ForgotPassword,
     db: AsyncSession = Depends(get_db),
 ) -> JSONResponse:
@@ -234,6 +236,7 @@ async def forgot_password(
 
 @router.post("/reset-password", status_code=status.HTTP_200_OK)
 async def reset_password(
+    request: Request,
     request_data: ResetPassword,
     db: AsyncSession = Depends(get_db),
 ) -> JSONResponse:

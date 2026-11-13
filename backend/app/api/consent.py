@@ -27,7 +27,7 @@ router = APIRouter(prefix="/api/consent", tags=["consent"])
 # Record consent
 # ---------------------------------------------------------------------------
 
-@router.post("/{purpose}", response_model=ConsentRecordResponse)
+@router.post("/{purpose}", response_model=ConsentRecordResponse, status_code=status.HTTP_201_CREATED)
 async def record_consent(
     purpose: str,
     preference: ConsentPreference,

@@ -2,21 +2,22 @@
 # PROJECT NEXUS AI - API Dependencies
 # =============================================================================
 # Authentication dependencies: get current user from JWT cookie/header.
+# RLS dependencies: set PostgreSQL session variables for Row Level Security.
 # =============================================================================
 
 import logging
-from typing import Optional
+from typing import AsyncGenerator, Optional
 from uuid import UUID
 
 from fastapi import Cookie, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.security import decode_token
-from app.db.database import get_db
+from app.db.database import AsyncSessionLocal, get_db
 from app.models import User
 
 logger = logging.getLogger(__name__)
@@ -25,9 +26,26 @@ logger = logging.getLogger(__name__)
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
 
 
+# ---------------------------------------------------------------------------
+# Step 1: Get DB session without RLS (for authentication lookup)
+# ---------------------------------------------------------------------------
+
+async def get_db_raw() -> AsyncGenerator[AsyncSession, None]:
+    """FastAPI dependency that yields a raw database session (no RLS context)."""
+    async with AsyncSessionLocal() as session:
+        try:
+            yield session
+        finally:
+            await session.close()
+
+
+# ---------------------------------------------------------------------------
+# Step 2: Authenticate user (uses raw DB session)
+# ---------------------------------------------------------------------------
+
 async def get_current_user(
     request: Request,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_raw),
     access_token: Optional[str] = Cookie(None),
     authorization: Optional[str] = None,
 ) -> User:
@@ -71,6 +89,57 @@ async def get_current_user(
         )
 
     return user
+
+
+# ---------------------------------------------------------------------------
+# Step 3: Get DB session WITH RLS context (for authorized operations)
+# ---------------------------------------------------------------------------
+
+async def get_db_with_rls(
+    current_user: User = Depends(get_current_user),
+) -> AsyncGenerator[AsyncSession, None]:
+    """FastAPI dependency that yields a database session with RLS context set
+    based on the authenticated user. Use this for all data operations after auth."""
+    async with AsyncSessionLocal() as session:
+        try:
+            # Set PostgreSQL session variables for Row Level Security
+            if settings.database_url.startswith("postgresql"):
+                await session.execute(
+                    text("SELECT set_config('app.current_user_id', $1, true)"),
+                    [str(current_user.id)],
+                )
+                await session.execute(
+                    text("SELECT set_config('app.current_user_role', $1, true)"),
+                    [current_user.role],
+                )
+            yield session
+        finally:
+            await session.close()
+
+
+# ---------------------------------------------------------------------------
+# Convenience aliases
+# ---------------------------------------------------------------------------
+
+# For endpoints that need both the user and an RLS-enabled DB session
+async def get_rls_db(
+    current_user: User = Depends(get_current_user),
+) -> AsyncGenerator[AsyncSession, None]:
+    """Alias for get_db_with_rls - provides DB session with RLS context."""
+    async with AsyncSessionLocal() as session:
+        try:
+            if settings.database_url.startswith("postgresql"):
+                await session.execute(
+                    text("SELECT set_config('app.current_user_id', $1, true)"),
+                    [str(current_user.id)],
+                )
+                await session.execute(
+                    text("SELECT set_config('app.current_user_role', $1, true)"),
+                    [current_user.role],
+                )
+            yield session
+        finally:
+            await session.close()
 
 
 async def get_current_active_user(current_user: User = Depends(get_current_user)) -> User:

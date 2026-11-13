@@ -66,13 +66,28 @@ AsyncSessionLocal = async_sessionmaker(
 
 
 # ---------------------------------------------------------------------------
-# Session dependency
+# Session dependency with RLS context
 # ---------------------------------------------------------------------------
 
-async def get_db() -> AsyncGenerator[AsyncSession, None]:
-    """FastAPI dependency that yields a database session."""
+async def get_db(
+    current_user_id: Optional[str] = None,
+    current_user_role: Optional[str] = None,
+) -> AsyncGenerator[AsyncSession, None]:
+    """FastAPI dependency that yields a database session with RLS context set."""
     async with AsyncSessionLocal() as session:
         try:
+            # Set PostgreSQL session variables for Row Level Security
+            if settings.database_url.startswith("postgresql"):
+                if current_user_id:
+                    await session.execute(
+                        text("SELECT set_config('app.current_user_id', $1, true)"),
+                        [current_user_id],
+                    )
+                if current_user_role:
+                    await session.execute(
+                        text("SELECT set_config('app.current_user_role', $1, true)"),
+                        [current_user_role],
+                    )
             yield session
         finally:
             await session.close()

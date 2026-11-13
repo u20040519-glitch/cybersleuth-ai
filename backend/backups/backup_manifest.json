@@ -1,0 +1,89 @@
+[
+  {
+    "filename": "nexus_ai_backup_20261113_115544.db",
+    "path": "backups\\nexus_ai_backup_20261113_115544.db",
+    "timestamp": "20261113_115544",
+    "database_type": "sqlite",
+    "file_size_bytes": 278528,
+    "sha256": "b17ae5ef28b20e3c9aad1412b68f67be4bc4735917de51b828f26c02b0aa37b8",
+    "encrypted": false,
+    "verified": true
+  },
+  {
+    "filename": "nexus_ai_backup_20261113_115845.db",
+    "path": "backups\\nexus_ai_backup_20261113_115845.db",
+    "timestamp": "20261113_115845",
+    "database_type": "sqlite",
+    "file_size_bytes": 278528,
+    "sha256": "b17ae5ef28b20e3c9aad1412b68f67be4bc4735917de51b828f26c02b0aa37b8",
+    "encrypted": false,
+    "verified": true,
+    "verified_at": "20261113_115845"
+  },
+  {
+    "filename": "nexus_ai_backup_20261113_115918.db",
+    "path": "backups\\nexus_ai_backup_20261113_115918.db",
+    "timestamp": "20261113_115918",
+    "database_type": "sqlite",
+    "file_size_bytes": 278528,
+    "sha256": "343286ceb69b0737279804e6b3a46d5590861f95d88da7f8ead7cd7ba2140a46",
+    "encrypted": false,
+    "verified": true,
+    "verified_at": "20261113_115918"
+  },
+  {
+    "filename": "nexus_ai_backup_20261113_120021.db",
+    "path": "backups\\nexus_ai_backup_20261113_120021.db",
+    "timestamp": "20261113_120021",
+    "database_type": "sqlite",
+    "file_size_bytes": 307200,
+    "sha256": "09db85e6f47ff0eb3ee6ff4cafc237cd77b35a1bf88f966a1225f1d9b5580d95",
+    "encrypted": false,
+    "verified": true,
+    "verified_at": "20261113_120021"
+  },
+  {
+    "filename": "nexus_ai_backup_20261113_120315.db",
+    "path": "backups\\nexus_ai_backup_20261113_120315.db",
+    "timestamp": "20261113_120315",
+    "database_type": "sqlite",
+    "file_size_bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "encrypted": false,
+    "verified": true,
+    "verified_at": "20261113_120315"
+  },
+  {
+    "filename": "nexus_ai_backup_20261113_120352.db",
+    "path": "backups\\nexus_ai_backup_20261113_120352.db",
+    "timestamp": "20261113_120352",
+    "database_type": "sqlite",
+    "file_size_bytes": 278528,
+    "sha256": "950aca9ad36222c2a33b5d2321f856c91a93f26c4e6e5dd868fef7bd8500e072",
+    "encrypted": false,
+    "verified": true,
+    "verified_at": "20261113_120352"
+  },
+  {
+    "filename": "nexus_ai_backup_20261113_120421.db",
+    "path": "backups\\nexus_ai_backup_20261113_120421.db",
+    "timestamp": "20261113_120421",
+    "database_type": "sqlite",
+    "file_size_bytes": 294912,
+    "sha256": "f65d08acdaa6a6a026815c6fe28c2f6628aa9f7bba48a6f54724fcc6f0a43ba1",
+    "encrypted": false,
+    "verified": true,
+    "verified_at": "20261113_120421"
+  },
+  {
+    "filename": "nexus_ai_backup_20261113_120523.db",
+    "path": "backups\\nexus_ai_backup_20261113_120523.db",
+    "timestamp": "20261113_120523",
+    "database_type": "sqlite",
+    "file_size_bytes": 303104,
+    "sha256": "77d3523dd273ee3d3ecc7c57d7344318264bf3cff0659be923dbf076703048b9",
+    "encrypted": false,
+    "verified": true,
+    "verified_at": "20261113_120523"
+  }
+]

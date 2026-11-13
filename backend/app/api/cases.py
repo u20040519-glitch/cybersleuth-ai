@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_active_user, require_role
+from app.api.deps import get_current_active_user, get_db_with_rls, require_role
 from app.core.config import settings
 from app.db.database import get_db
 from app.models import User, Case, CasePermission, AuditLog
@@ -36,7 +36,7 @@ async def create_case(
     case_data: CaseCreate,
     request=None,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_with_rls),
 ) -> CaseResponse:
     """Create a new investigation case. Owner gets full permissions."""
     # Check case number uniqueness
@@ -84,7 +84,7 @@ async def create_case(
 @router.get("", response_model=list[CaseResponse])
 async def list_cases(
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_with_rls),
     status_filter: Optional[str] = Query(None, alias="status"),
     limit: int = Query(50, le=100),
     offset: int = Query(0, ge=0),
@@ -116,9 +116,9 @@ async def list_cases(
 
 @router.get("/{case_id}", response_model=CaseResponse)
 async def get_case(
-    case_id: UUID,
+    case_id: str,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_with_rls),
 ) -> CaseResponse:
     """Get a case if the user owns it or has permission."""
     result = await db.execute(select(Case).where(Case.id == case_id))
@@ -147,10 +147,10 @@ async def get_case(
 
 @router.patch("/{case_id}", response_model=CaseResponse)
 async def update_case(
-    case_id: UUID,
+    case_id: str,
     case_data: CaseCreate,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_with_rls),
 ) -> CaseResponse:
     """Update a case (owner or admin permission required)."""
     result = await db.execute(select(Case).where(Case.id == case_id))
@@ -195,9 +195,9 @@ async def update_case(
 
 @router.delete("/{case_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_case(
-    case_id: UUID,
+    case_id: str,
     current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db_with_rls),
 ) -> None:
     """Delete a case (owner only). Evidence and related records handled per retention policy."""
     result = await db.execute(select(Case).where(Case.id == case_id))
