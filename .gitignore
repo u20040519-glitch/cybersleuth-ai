@@ -118,4 +118,24 @@ dmypy.json
 .poetry.lock
 poetry.toml
 
+# Backups (never commit backups containing data)
+backups/*.sql
+backups/*.encrypted
+backups/*.dump
+backups/*.db
+backups/backup_manifest.json
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+db.sqlite3
+db.sqlite3-journal
+
+# Docker
+.env
+.env.production
+frontend/dist/
+frontend/build/
+
 # End of file
