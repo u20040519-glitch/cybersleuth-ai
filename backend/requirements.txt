@@ -1,0 +1,48 @@
+# =============================================================================
+# PROJECT NEXUS AI - Backend Dependencies
+# =============================================================================
+
+# Web framework
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+
+# Database
+sqlalchemy>=2.0.23
+asyncpg>=0.29.0
+aiosqlite>=0.19.0
+alembic>=1.13.0
+
+# Authentication & Security
+passlib[bcrypt]>=1.7.4
+argon2-cffi>=23.1.0
+python-jose[cryptography]>=3.3.0
+python-multipart>=0.0.6
+itsdangerous>=2.1.2
+
+# Email
+aiosmtplib>=5.1.0
+email-validator>=2.1.0
+
+# Configuration
+pydantic-settings>=2.1.0
+python-dotenv>=1.0.0
+
+# Rate limiting
+redis>=5.0.0
+slowapi>=0.1.9
+
+# Error tracking
+sentry-sdk[fastapi]>=1.39.0
+
+# Testing
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+httpx>=0.25.0
+
+# Utilities
+python-dateutil>=2.8.0
+uuid>=1.0.0
+
+# =============================================================================
+# END OF BACKEND DEPENDENCIES
+# =============================================================================

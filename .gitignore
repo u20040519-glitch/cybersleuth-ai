@@ -1,0 +1,121 @@
+# =============================================================================
+# PROJECT NEXUS AI - .gitignore
+# =============================================================================
+
+# Environment variables (SECRETS - never commit)
+.env
+.env.local
+.env.*.local
+.envrc
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+.pipenv/
+.python-version
+
+# Virtual environments
+.venv/
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py.cover
+*.lcov
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Streamlit
+.streamlit/secrets.toml
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Backend
+instance/
+.webassets-cache
+
+# Database
+*.sqlite
+*.sqlite3
+db.sqlite3
+db.sqlite3-journal
+*.rdb
+*.aof
+
+# Frontend
+node_modules/
+frontend/dist/
+frontend/build/
+.next/
+.nuxt/
+dist/
+build/
+
+# Backups (never commit backups containing data)
+backups/*.sql
+backups/*.encrypted
+backups/*.dump
+
+# Misc
+.pytest_cache/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+.cython_debug/
+.ruff_cache/
+.poetry.lock
+poetry.toml
+
+# End of file
