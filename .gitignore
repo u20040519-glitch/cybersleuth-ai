@@ -67,7 +67,13 @@ cover/
 .streamlit/secrets.toml
 
 # IDE
-.vscode/
+# Editor-local state stays out of the repo, but the shared run configurations
+# (tasks.json / launch.json) are committed so anyone can start the project
+# from VS Code with one click.
+.vscode/*
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
 .idea/
 *.swp
 *.swo
