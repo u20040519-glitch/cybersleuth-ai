@@ -1,12 +1,20 @@
 // =============================================================================
-// PROJECT NEXUS AI - Auth Context
+// CYBERSLEUTH AI - Auth Context
 // =============================================================================
-// Authentication state management with secure httpOnly cookie handling.
-// Tokens are never accessible to JavaScript (stored in httpOnly cookies).
+// Phase 1: Supabase-ready auth context. In demo mode (no Supabase credentials),
+// it uses localStorage persistence so navigation and protected routes work.
+// Phase 2: Connect real Supabase client here.
 // =============================================================================
 
-import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react'
-import { authAPI, User } from '@/services/api'
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+  ReactNode,
+} from 'react'
+import type { User, UserRole } from '@/types/index'
 
 interface AuthContextType {
   user: User | null
@@ -18,16 +26,31 @@ interface AuthContextType {
     email: string
     password: string
     confirm_password: string
-    accept_terms: boolean
-    accept_privacy: boolean
+    role?: UserRole
   }) => Promise<void>
   logout: () => Promise<void>
-  verifyEmail: (token: string) => Promise<void>
-  forgotPassword: (email: string) => Promise<void>
-  resetPassword: (token: string, new_password: string) => Promise<void>
-  changePassword: (current_password: string, new_password: string) => Promise<void>
-  resendVerification: (email: string) => Promise<void>
+  resetPassword: (email: string) => Promise<void>
 }
+
+const DEMO_USER: User = {
+  id: 'demo-user-001',
+  email: 'investigator@cybersleuth.ai',
+  full_name: 'Lead Investigator',
+  role: 'investigator',
+  created_at: new Date().toISOString(),
+  updated_at: new Date().toISOString(),
+}
+
+const DEMO_SUPERVISOR: User = {
+  id: 'demo-user-002',
+  email: 'supervisor@cybersleuth.ai',
+  full_name: 'Case Supervisor',
+  role: 'supervisor',
+  created_at: new Date().toISOString(),
+  updated_at: new Date().toISOString(),
+}
+
+const STORAGE_KEY = 'cybersleuth_auth_user'
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
@@ -35,67 +58,70 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
-  // Check authentication on mount
-  useEffect(() => {
-    checkAuth()
+  const getDemoUser = useCallback((email: string): User | null => {
+    const lower = email.toLowerCase()
+    if (lower === DEMO_USER.email) return DEMO_USER
+    if (lower === DEMO_SUPERVISOR.email) return DEMO_SUPERVISOR
+    return null
   }, [])
 
-  const checkAuth = useCallback(async () => {
-    try {
-      const response = await authAPI.getProfile()
-      setUser(response.data)
-    } catch {
-      setUser(null)
-    } finally {
-      setIsLoading(false)
+  useEffect(() => {
+    const stored = localStorage.getItem(STORAGE_KEY)
+    if (stored) {
+      try {
+        setUser(JSON.parse(stored))
+      } catch {
+        setUser(null)
+      }
     }
+    setIsLoading(false)
   }, [])
 
   const login = useCallback(async (email: string, password: string) => {
-    await authAPI.login({ email, password })
-    // Tokens are set in httpOnly cookies by the backend
-    await checkAuth()
-  }, [checkAuth])
+    // Phase 2: replace with supabase.auth.signInWithPassword({ email, password })
+    const demoUser = getDemoUser(email)
+    if (!demoUser || password.length < 6) {
+      throw new Error('Invalid credentials. Try investigator@cybersleuth.ai / password123')
+    }
+    setUser(demoUser)
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(demoUser))
+  }, [getDemoUser])
 
   const register = useCallback(async (data: {
     full_name: string
     email: string
     password: string
     confirm_password: string
-    accept_terms: boolean
-    accept_privacy: boolean
+    role?: UserRole
   }) => {
-    await authAPI.register(data)
-    // After registration, user needs to verify email before login
+    if (data.password !== data.confirm_password) {
+      throw new Error('Passwords do not match')
+    }
+    if (data.password.length < 8) {
+      throw new Error('Password must be at least 8 characters')
+    }
+    const newUser: User = {
+      id: `user-${Math.random().toString(36).slice(2)}`,
+      email: data.email,
+      full_name: data.full_name,
+      role: data.role || 'investigator',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }
+    setUser(newUser)
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(newUser))
+    // Phase 2: replace with supabase.auth.signUp({ email, password, ... })
   }, [])
 
   const logout = useCallback(async () => {
-    await authAPI.logout()
+    // Phase 2: replace with supabase.auth.signOut()
     setUser(null)
+    localStorage.removeItem(STORAGE_KEY)
   }, [])
 
-  const verifyEmail = useCallback(async (token: string) => {
-    await authAPI.verifyEmail(token)
-    await checkAuth()
-  }, [checkAuth])
-
-  const forgotPassword = useCallback(async (email: string) => {
-    await authAPI.forgotPassword(email)
-  }, [])
-
-  const resetPassword = useCallback(async (token: string, new_password: string) => {
-    await authAPI.resetPassword({ token, new_password })
-  }, [])
-
-  const changePassword = useCallback(
-    async (current_password: string, new_password: string) => {
-      await authAPI.changePassword({ current_password, new_password })
-    },
-    []
-  )
-
-  const resendVerification = useCallback(async (email: string) => {
-    await authAPI.resendVerification(email)
+  const resetPassword = useCallback(async (_email: string) => {
+    // Phase 2: replace with supabase.auth.resetPasswordForEmail(email)
+    return
   }, [])
 
   const value = {
@@ -105,11 +131,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     login,
     register,
     logout,
-    verifyEmail,
-    forgotPassword,
     resetPassword,
-    changePassword,
-    resendVerification,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

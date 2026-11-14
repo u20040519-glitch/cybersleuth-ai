@@ -1,5 +1,5 @@
 # =============================================================================
-# PROJECT NEXUS AI - .gitignore
+# CYBERSLEUTH AI - .gitignore
 # =============================================================================
 
 # Environment variables (SECRETS - never commit)
@@ -7,6 +7,10 @@
 .env.local
 .env.*.local
 .envrc
+frontend/.env
+frontend/.env.*
+backend/.env
+backend/.env.*
 
 # Python
 __pycache__/
@@ -139,3 +143,15 @@ frontend/dist/
 frontend/build/
 
 # End of file
+
+# =============================================================================
+# CyberSleuth AI - Evidence & forensic artefacts
+# =============================================================================
+# Never commit real evidence, extracted frames, or generated reports.
+uploads/
+backend/uploads/
+evidence/
+backend/evidence/
+backend/storage/
+*.apk
+*.apks

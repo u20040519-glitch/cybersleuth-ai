@@ -1,0 +1,69 @@
+# =============================================================================
+# CYBERSLEUTH AI - Netlify deployment configuration
+# =============================================================================
+# Connect this repository to Netlify and everything below is applied
+# automatically - no manual build settings required.
+#
+#   Netlify  ->  Add new site  ->  Import an existing project
+#             ->  Connect to GitHub  ->  select this repository
+#             ->  Deploy
+#
+# The `base` directory is set to `frontend`, so Netlify installs the npm
+# dependencies from frontend/package.json and publishes frontend/dist.
+# =============================================================================
+
+[build]
+  base = "frontend"
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "18"
+
+# ---------------------------------------------------------------------------
+# SPA fallback
+# ---------------------------------------------------------------------------
+# React Router serves /deeptrace, /investigations/<uuid>, /evidence/upload etc.
+# as client-side routes. Without this rewrite Netlify returns 404 for any
+# direct navigation or page refresh on those paths.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# ---------------------------------------------------------------------------
+# Security headers
+# ---------------------------------------------------------------------------
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+    X-DNS-Prefetch-Control = "off"
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains"
+
+# Hashed build assets are immutable - cache them hard.
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# index.html must never be cached, or clients keep loading an old asset bundle.
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+
+# ---------------------------------------------------------------------------
+# Never expose the backend secrets through the static build.
+# ---------------------------------------------------------------------------
+# Any VITE_* variable is inlined into the browser bundle. Only set public
+# values here - NEVER the Gemini API key or the Supabase service-role key.
+#
+#   VITE_SUPABASE_URL      = https://<project>.supabase.co
+#   VITE_SUPABASE_ANON_KEY = <anon key, safe for the browser, RLS-protected>
+#   VITE_API_BASE_URL      = https://<backend-host>/api
+#
+# Set these in Netlify -> Site configuration -> Environment variables.

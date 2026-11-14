@@ -1,138 +1,141 @@
 // =============================================================================
-// PROJECT NEXUS AI - Login Page
+// CYBERSLEUTH AI - Login Page
 // =============================================================================
 
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import * as z from 'zod'
 import { useAuth } from '@/context/AuthContext'
-import { Mail, Lock, Eye, EyeOff, AlertCircle, Loader2 } from 'lucide-react'
-
-const loginSchema = z.object({
-  email: z.string().email('Invalid email address'),
-  password: z.string().min(1, 'Password is required'),
-})
-
+import { Button } from '@/ui/Button'
+import { Input } from '@/ui/Input'
+import { Card, CardHeader } from '@/ui/Card'
+import { ShieldCheck, ArrowRight } from 'lucide-react'
 export function LoginPage() {
-  const navigate = useNavigate()
-  const { login, isLoading } = useAuth()
   const [error, setError] = useState<string | null>(null)
-  const [showPassword, setShowPassword] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const { login } = useAuth()
+  const navigate = useNavigate()
+  const { register, handleSubmit, formState: { errors } } = useForm<{
+    email: string
+    password: string
+  }>()
 
-  const form = useForm<z.infer<typeof loginSchema>>({
-    resolver: zodResolver(loginSchema),
-    defaultValues: { email: '', password: '' },
-  })
-
-  const onSubmit = async (data: z.infer<typeof loginSchema>) => {
+  const onSubmit = async (data: { email: string; password: string }) => {
+    setIsLoading(true)
     setError(null)
     try {
       await login(data.email, data.password)
       navigate('/dashboard', { replace: true })
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Invalid email or password')
+      setError(err.message || 'Login failed. Please try again.')
+    } finally {
+      setIsLoading(false)
     }
   }
 
+  const demoCreds = (
+    <div className="mt-6 p-3 rounded-lg bg-secondary border border-border text-xs">
+      <p className="text-text-secondary/70 mb-1 font-semibold mb-2">Demo credentials:</p>
+      <div className="flex gap-4">
+        <div>
+          <div className="text-text-main">Investigator</div>
+          <div className="text-text-secondary/50">investigator@cybersleuth.ai</div>
+          <div className="text-text-secondary/50">password123</div>
+        </div>
+        <div>
+          <div className="text-text-main">Supervisor</div>
+          <div className="text-text-secondary/50">supervisor@cybersleuth.ai</div>
+          <div className="text-text-secondary/50">password123</div>
+        </div>
+      </div>
+    </div>
+  )
+
   return (
-    <div className="flex h-screen items-center justify-center bg-nexus-deeper">
-      <div className="w-full max-w-md p-8">
-        {/* Brand */}
-        <div className="flex flex-col items-center mb-8">
-          <div className="w-12 h-12 bg-nexus-accent rounded-xl flex items-center justify-center text-nexus-dark font-bold text-xl mb-4">
-            N
+    <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
+      <div className="w-full max-w-md">
+        <div className="mb-8 text-center">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-blue to-primary-cyan flex items-center justify-center mx-auto mb-4 shadow-glow-blue">
+            <ShieldCheck size={24} className="text-[#080D18]" />
           </div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">PROJECT NEXUS AI</h1>
-          <p className="text-slate-400 text-sm mt-1">Secure Forensic Investigation Platform</p>
+          <h1 className="text-2xl font-bold text-text-main">CyberSleuth AI</h1>
+          <p className="text-text-secondary text-sm">
+            Multimodal Digital Forensics Platform
+          </p>
         </div>
 
-        {/* Error Message */}
-        {error && (
-          <div className="mb-6 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm flex items-center gap-2">
-            <AlertCircle size={16} />
-            <span>{error}</span>
-          </div>
-        )}
+        <Card>
+          <CardHeader
+            title="Sign In"
+            subtitle="Access your forensic investigation workspace"
+          />
 
-        {/* Login Form */}
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">
-              Email Address
-            </label>
-            <div className="relative">
-              <Mail size={18} className="absolute left-3 top-3 text-slate-500" />
-              <input
-                {...form.register('email')}
-                type="email"
-                placeholder="name@organization.com"
-                className="w-full pl-10 pr-4 py-3 bg-slate-800 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:border-nexus-accent focus:ring-1 focus:ring-nexus-accent transition-all"
-                disabled={isLoading}
-              />
-              {form.formState.errors.email && (
-                <p className="mt-1 text-xs text-red-400">{form.formState.errors.email.message}</p>
-              )}
-            </div>
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="block text-sm font-medium text-slate-300">
-                Password
-              </label>
-            </div>
-            <div className="relative">
-              <Lock size={18} className="absolute left-3 top-3 text-slate-500" />
-              <input
-                {...form.register('password')}
-                type={showPassword ? 'text' : 'password'}
-                placeholder="••••••••"
-                className="w-full pl-10 pr-10 py-3 bg-slate-800 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:border-nexus-accent focus:ring-1 focus:ring-nexus-accent transition-all"
-                disabled={isLoading}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-3 text-slate-500 hover:text-white"
-                aria-label="Toggle password visibility"
-              >
-                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-              {form.formState.errors.password && (
-                <p className="mt-1 text-xs text-red-400">{form.formState.errors.password.message}</p>
-              )}
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full btn-primary py-3"
-          >
-            {isLoading ? (
-              <>
-                <Loader2 size={18} className="mr-2 animate-spin" />
-                Signing in...
-              </>
-            ) : (
-              'Sign In'
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            {error && (
+              <div className="p-3 rounded-lg bg-error/10 border border-error/20 text-sm text-error">
+                {error}
+              </div>
             )}
-          </button>
 
-          <p className="text-sm text-slate-400 text-center mt-6">
-            Don't have an account?{' '}
-            <a href="/register" className="text-nexus-accent hover:text-nexus-accentHover font-medium">
-              Create account
-            </a>
-          </p>
-        </form>
+            <Input
+              label="Email Address"
+              type="email"
+              placeholder="investigator@cybersleuth.ai"
+              {...register('email')}
+              error={errors.email?.message}
+            />
 
-        <p className="text-xs text-slate-500 text-center mt-8">
-          PROJECT NEXUS AI - Academic Project • Secure by Design
-        </p>
+            <Input
+              label="Password"
+              type="password"
+              placeholder="••••••••"
+              {...register('password')}
+              error={errors.password?.message}
+            />
+
+            <Button
+              type="submit"
+              variant="primary"
+              className="w-full"
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <span className="flex items-center gap-2">
+                  <LoadingSpinnerInline size="sm" /> Signing in...
+                </span>
+              ) : (
+                <span className="flex items-center gap-2">
+                  <ArrowRight size={16} /> Sign In
+                </span>
+              )}
+            </Button>
+          </form>
+
+          {demoCreds}
+
+          <div className="mt-6 text-center">
+            <p className="text-text-secondary/60 text-sm">
+              Don&apos;t have an account?{' '}
+              <Link to="/register" className="text-primary-blue hover:text-primary-cyan font-medium">
+                Create account
+              </Link>
+            </p>
+          </div>
+        </Card>
       </div>
+    </div>
+  )
+}
+
+function LoadingSpinnerInline({ size = 'sm' }: { size?: 'sm' | 'md' | 'lg' }) {
+  const sizes = { sm: 'h-4 w-4', md: 'h-6 w-6', lg: 'h-8 w-8' }
+  return (
+    <div
+      className={`animate-spin rounded-full border-2 border-current text-current ${sizes[size]}`}
+      role="status"
+      aria-label="Loading"
+    >
+      <span className="sr-only">Loading...</span>
     </div>
   )
 }
