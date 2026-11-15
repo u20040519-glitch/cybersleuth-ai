@@ -52,6 +52,143 @@
       },
       "group": "build",
       "problemMatcher": ["$tsc"]
+    },
+    {
+      "label": "CyberSleuth: install backend dependencies",
+      "type": "shell",
+      "command": "${command:python.interpreterPath} -m pip install -r requirements.txt",
+      "options": {
+        "cwd": "${workspaceFolder}/backend"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      }
+    },
+    {
+      "label": "CyberSleuth: start API",
+      "detail": "uvicorn app.main:app on http://127.0.0.1:8000 (embedded PostgreSQL is provisioned on first start)",
+      "type": "shell",
+      "command": "${command:python.interpreterPath} -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload",
+      "options": {
+        "cwd": "${workspaceFolder}/backend",
+        "env": {
+          "PYTHONUNBUFFERED": "1"
+        }
+      },
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "shell",
+        "pattern": {
+          "regexp": "^$",
+          "file": 1,
+          "location": 2,
+          "message": 3
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".*(Uvicorn running|Started server process).*",
+          "endsPattern": ".*(Application startup complete|Waiting for application startup).*"
+        }
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "CyberSleuth: start frontend",
+      "detail": "Vite dev server on http://localhost:3000 (proxies /api to the API on port 8000)",
+      "type": "shell",
+      "command": "npm run dev",
+      "options": {
+        "cwd": "${workspaceFolder}/frontend"
+      },
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "typescript",
+        "file": "tsconfig.json",
+        "pattern": "$tsc",
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".*VITE.*ready in.*",
+          "endsPattern": ".*Local:.*"
+        }
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      }
+    },
+    {
+      "label": "CyberSleuth: start full stack",
+      "detail": "API (8000) + frontend (3000) together",
+      "type": "shell",
+      "command": "echo CyberSleuth AI is starting: API on http://127.0.0.1:8000, UI on http://localhost:3000",
+      "dependsOn": ["CyberSleuth: start API", "CyberSleuth: start frontend"],
+      "dependsOrder": "parallel",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": false
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "CyberSleuth: run backend tests",
+      "detail": "pytest against the isolated cybersleuth_test database",
+      "type": "shell",
+      "command": "${command:python.interpreterPath} -m pytest -q",
+      "options": {
+        "cwd": "${workspaceFolder}/backend"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      }
+    },
+    {
+      "label": "CyberSleuth: typecheck frontend",
+      "type": "shell",
+      "command": "npx tsc --noEmit",
+      "options": {
+        "cwd": "${workspaceFolder}/frontend"
+      },
+      "problemMatcher": ["$tsc"],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      }
+    },
+    {
+      "label": "CyberSleuth: seed demo data",
+      "detail": "Recreate the Operation Silent Whisper case (idempotent)",
+      "type": "shell",
+      "command": "${command:python.interpreterPath} scripts/seed_demo_data.py",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      }
     }
   ]
 }

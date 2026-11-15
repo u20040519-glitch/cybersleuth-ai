@@ -1,301 +1,119 @@
 # CYBERSLEUTH AI - Development Status
 
 **Project:** CyberSleuth AI — Multimodal AI-Powered Digital Forensics & Evidence Reconstruction Platform  
-**Version:** 1.0.0 (Phase 1 — Foundation & UI)  
-**Status:** ✅ Phase 1 Complete  
-**Last Updated:** 2026-11-13
+**Version:** 1.0.0 (All 7 phases complete)  
+**Status:** Phases 1–7 implemented and verified end-to-end  
+**Last updated:** 2026-11-15
 
 ---
 
-## Implementation Summary
-
-### Phase 1: Foundation & UI ✅ COMPLETE
-
-**Design system**
-- Dark cyber-forensics palette: `#080D18` background · `#0B1220` sidebar · `#111B2B` cards · `#162338` secondary surfaces · `#3B82F6` primary blue · `#22D3EE` cyan · `#E6F0FF` text · `#91A4BE` secondary text · `#34D399` success · `#FBBF24` warning · `#F87171` error
-- Tailwind theme extension with cyber shadows (`cyber`, `cyber-cyan`, `glow-blue`, `glow-cyan`) and scan animation
-- Custom scrollbars, focus-visible rings, glass panels, consistent spacing/typography
-
-**Layout**
-- Persistent sidebar with all 11 required navigation items
-- Contextual top bar with per-route page titles
-- Responsive across desktop / tablet / mobile (sidebar collapses, mobile overlay)
-
-**Authentication**
-- Login and Registration screens with client-side validation (react-hook-form + zod-ready)
-- `AuthContext` — Supabase-ready session state, demo mode for Phase 1 exploration
-- `ProtectedRoute` / `GuestRoute` guards
-- Demo credentials: `investigator@cybersleuth.ai` / `password123`, `supervisor@cybersleuth.ai` / `password123`
-
-**Pages (16)**
-Dashboard · Investigations · Create Investigation · Investigation Detail · Evidence Vault · Upload Evidence · **DeepTrace AI** · **SpyTrace AI** · **VoiceProof AI** · **CyberSleuth AI** · Correlation Engine · Reports · Audit Logs · Settings · Login · Register
-
-**Component library**
-`Button` (6 variants, 3 sizes, `asChild` via `@radix-ui/react-slot`) · `Card`/`CardHeader` · `StatCard` · `Badge` (5 variants) · `Input`/`TextArea` (forwardRef for react-hook-form) · `EmptyState` · `LoadingSpinner`
-
-**Infrastructure**
-- Axios `apiClient` + typed endpoint wrappers for all planned backend routes
-- TypeScript domain types for all 11 planned database tables
-- `@supabase/supabase-js` installed and ready (Phase 2 wiring)
-- `recharts` + `framer-motion` installed and ready
-- `utils/format.ts` — byte formatting, date formatting, hash truncation, file-type detection
-
----
-
-## Phase 1 Verification Results
-
-All checks executed on 2026-11-13.
-
-| # | Check | Command / Method | Result |
-|---|---|---|---|
-| 1 | Dependency install | `npm install` | ✅ 48 packages added, 296 audited |
-| 2 | TypeScript strict type-check | `npx tsc --noEmit` | ✅ **0 errors** |
-| 3 | Production build | `npm run build` | ✅ 1608 modules, 390.06 kB JS (117.80 kB gzip), 26.06 kB CSS (5.28 kB gzip) |
-| 4 | Route render sweep | browser automation, 14 routes | ✅ all render with correct headings |
-| 5 | Console error sweep | browser automation, 9 routes | ✅ **0 console errors** |
-| 6 | Sidebar navigation | browser automation, every route | ✅ all 11 items present on all routes |
-| 7 | Auth flow | browser automation | ✅ login → `/dashboard` → logout → `/login` |
-| 8 | Colour compliance | computed style inspection | ✅ body bg `rgb(8,13,24)` = `#080D18`; text `rgb(230,240,255)` = `#E6F0FF` |
-| 9 | Correlation workflow | browser automation | ✅ timeline + connections + relationship graph render |
-| 10 | Report workflow | browser automation | ✅ report ID generated, Download PDF button present |
-| 11 | Working filters | code + browser | ✅ evidence type filter, investigation status filter, search |
-| 12 | Public tunnel link | Cloudflare quick tunnel + browser | ✅ 14/14 routes render, **0 console errors** over the public URL |
-| 13 | Dashboard honesty | browser automation | ✅ shows `—` while loading, then labelled **DEMO DATA** fallback after the 8 s API timeout |
-
-### Public sharing setup (added after initial Phase 1 sign-off)
-
-| Item | Detail |
-|---|---|
-| `cloudflared` | Installed to `%USERPROFILE%\Tools\cloudflared.exe` (v2026.11.0) |
-| Dev server | Run with `npm run dev -- --host` so it binds all interfaces (LAN + tunnel) |
-| Vite host guard | `server.allowedHosts` now permits `.trycloudflare.com` and `.loca.lt` — without it Vite rejects the tunnel Host header with `403 Blocked request` |
-| API base URL | Now **relative** (`/api`) instead of absolute `http://localhost:8000/api`, so the request proxies through the Vite machine rather than the *viewer's* localhost |
-| API timeout | `8 s` on the Axios client so the UI falls back to demo mode instead of hanging forever with no backend |
-| Launcher | `Desktop\Um_Cyber\start-share-link.cmd` starts the server, opens the tunnel, and prints the public URL |
-
-### Errors encountered and fixed during Phase 1
-
-| Error | Root cause | Fix |
-|---|---|---|
-| `Cannot find module '@/ui/Card'` | Path alias pointed to `src/*`, components live in `src/components/ui/` | Added `@/ui/*` alias to **both** `tsconfig.json` and `vite.config.ts` (regex form in Vite to avoid `@/...` prefix collision) |
-| `Property 'asChild' does not exist` | `Button` rewritten without Slot support | Installed `@radix-ui/react-slot`, restored `asChild` |
-| Lucide icon type mismatch | Icon prop typed as `ComponentType<{size?: number}>`; lucide uses `ForwardRefExoticComponent<LucideProps>` | Changed to `React.ElementType` in `types/index.ts`, `StatCard`, `EmptyState` |
-| `Function components cannot be given refs` | `Input`/`TextArea` are plain function components but `react-hook-form` passes a ref | Wrapped both in `React.forwardRef` |
-| Vite build: `ENOENT src/ui/LoadingSpinner` | String alias `'@'` matched before `'@/ui'` | Replaced with regex aliases in `vite.config.ts` |
-| JSX parse errors in 3 pages | `<Card>` closed with `</div>`; mismatched `<p>`/`</h3>` | Corrected closing tags |
-| Unused imports across 16 files | `noUnusedLocals` enabled | Removed all unused imports |
-| `Type 'string' is not assignable to type 'number'` | `colSpan="7"` used a string | Changed to `colSpan={7}` |
-| Tunnel URL returned `403 Blocked request` | Vite's DNS-rebinding guard rejects unknown `Host` headers | Added `server.allowedHosts: ['.trycloudflare.com', '.loca.lt', 'localhost']` to `vite.config.ts` |
-| Dashboard stuck showing `0` | API request hung with no backend, so the demo fallback never ran | Added an `8 s` Axios timeout; stat cards now render `—` while loading and switch to the labelled DEMO DATA values on failure |
-
----
-
-## Phase Status
+## Phase status
 
 | Phase | Scope | Status |
-|---|---|---|
-| **1** | **Foundation & UI** | ✅ **Complete** |
-| 2 | Supabase — schema, migrations, auth, RLS, storage, CRUD | ⬜ Not started |
-| 3 | Evidence integrity — validation, SHA-256, metadata, custody, audit | ⬜ Not started |
-| 4 | Forensic modules — OpenCV, Androguard, Librosa, spaCy, NetworkX | ⬜ Not started |
-| 5 | AI correlation — entities, timeline, graph, Gemini explanation layer | ⬜ Not started |
-| 6 | Reports — PDF generation with evidence references | ⬜ Not started |
-| 7 | Testing, security hardening, GitHub, Vercel, Render/Railway | ⬜ Not started |
+| --- | --- | --- |
+| **1** | Foundation & UI (React/TypeScript/Vite/Tailwind, design system, 16 pages) | ✅ **Complete** |
+| **2** | Supabase-compatible schema, auth, RLS, storage, CRUD | ✅ **Complete** (local embedded PG locally; Supabase-ready migrations) |
+| **3** | Evidence integrity — upload validation, SHA-256, chain of custody | ✅ **Complete** |
+| **4** | Forensic modules — OpenCV / Androguard / Librosa / spaCy + NetworkX-style correlation graph | ✅ **Complete** |
+| **5** | AI correlation — timeline, graph, Gemini explanation layer | ✅ **Complete** |
+| **6** | Reports — PDF generation | ✅ **Complete** |
+| **7** | Testing, security hardening, deployment | ✅ **Complete** |
 
 ---
 
-## Files Created
+## What was done in Phases 2–7 (this round)
 
-**Frontend — design system & infrastructure**
-```
-frontend/tailwind.config.js              (rewritten — cyber palette)
-frontend/package.json                    (rewritten — renamed + new deps)
-frontend/tsconfig.json                   (modified — added @/ui/* alias)
-frontend/vite.config.ts                  (modified — regex aliases)
-frontend/index.html                      (modified — branding, fonts, theme-color)
-frontend/public/cybersleuth.svg          (new — favicon)
-frontend/.env.example                    (new — frontend env template)
-frontend/src/index.css                   (rewritten — cyber design system)
-frontend/src/main.tsx                    (unchanged)
-frontend/src/App.tsx                     (rewritten — 16 routes)
-frontend/src/types/index.ts              (new — domain types)
-frontend/src/utils/cn.ts                 (new)
-frontend/src/utils/format.ts             (new — formatting helpers)
-frontend/src/services/api.ts             (rewritten — typed API layer)
-frontend/src/context/AuthContext.tsx     (rewritten — Supabase-ready)
-frontend/src/components/RouteGuard.tsx   (new)
-```
+### Phase 2 — Data & access layer
+- 12 SQL migrations in `supabase/migrations/` as the single source of truth (embedded PG locally, `supabase db push` in cloud).
+- Restricted application role `cybersleuth_app`; **RLS enabled on all tables** and genuinely enforced by connecting as that non-superuser.
+- **Fixed**: nested `$$` dollar-quote syntax error in `000_auth_parity.sql` (broke all bootstraps).
+- **Fixed**: migrations crashed on `pgcrypto`/`uuid-ossp` unavailable on the embedded server (now best-effort; schema only needs `gen_random_uuid()`).
+- **Fixed**: `can_access_investigation` re-read the very row being inserted, so `INSERT ... RETURNING` always failed RLS on the brand-new investigations row — fixed with a direct column comparison policy (`owner_id = current_user_id()`) and a shared `is_investigation_member()` helper (migration `011`).
+- **Fixed**: SQLAlchemy model mapped `metadata_json` onto a non-existent column (real column is `metadata`) — mapped explicitly for `evidence` and `generated_reports`.
+- **Fixed**: `auth.users` double-qualified as `auth."auth.users"` — mapped to schema `auth`, table `users`.
+- Storage: local filesystem backend at `backend/storage/` with immutable `evidence-originals`, `evidence-derived`, `reports` buckets; SupabaseStorageBackend implemented and keyed correctly (double bucket-prefix bug fixed).
+- **Deployment**: `bootstrap_database()` now honours `DATABASE_URL` (migrations) and a new `APP_DATABASE_URL` (runtime, restricted role); local dev unchanged (embedded PG).
 
-**Frontend — components**
-```
-frontend/src/components/layout/Sidebar.tsx    (new — 11 nav items)
-frontend/src/components/layout/TopNav.tsx     (new)
-frontend/src/components/layout/Layout.tsx     (new)
-frontend/src/components/ui/Button.tsx         (new)
-frontend/src/components/ui/Card.tsx           (new)
-frontend/src/components/ui/StatCard.tsx       (new)
-frontend/src/components/ui/Badge.tsx          (new)
-frontend/src/components/ui/Input.tsx          (new)
-frontend/src/components/ui/EmptyState.tsx     (new)
-frontend/src/components/ui/LoadingSpinner.tsx (new)
-```
+### Phase 3 — Evidence integrity
+- Upload pipeline: stream to temp → validate (allow-list MIME/extension, size cap 100 MB) → SHA-256 → **re-hash after storage and compare** → immutable original row → custody event.
+- `/evidence/{id}/integrity-check` re-verifies on demand; `/custody/verify` replays the hash chain; custody ledger is append-only (DB trigger + revoked grants + test).
+- **Fixed**: `storage_path=''` placeholder INSERT then UPDATE broke the immutable-original trigger — the file is now stored under a random key *before* the row exists (no UPDATE ever happens).
+- Audit events written for register/login/logout/upload/analyze/correlate/generate/download.
 
-**Frontend — pages**
-```
-frontend/src/pages/LoginPage.tsx               (rewritten)
-frontend/src/pages/RegisterPage.tsx            (rewritten)
-frontend/src/pages/DashboardPage.tsx           (rewritten)
-frontend/src/pages/InvestigationsPage.tsx      (rewritten)
-frontend/src/pages/CreateInvestigationPage.tsx (new)
-frontend/src/pages/InvestigationDetailPage.tsx (new)
-frontend/src/pages/EvidenceVaultPage.tsx       (rewritten)
-frontend/src/pages/UploadEvidencePage.tsx      (new)
-frontend/src/pages/DeepTracePage.tsx           (new)
-frontend/src/pages/SpyTracePage.tsx            (new)
-frontend/src/pages/VoiceProofPage.tsx          (new)
-frontend/src/pages/CyberSleuthPage.tsx         (new)
-frontend/src/pages/CorrelationEnginePage.tsx   (new)
-frontend/src/pages/ReportsPage.tsx             (new)
-frontend/src/pages/AuditLogsPage.tsx           (new)
-frontend/src/pages/SettingsPage.tsx            (new)
-frontend/src/pages/EvidenceUploadPage.tsx      (new — re-export alias)
-```
+### Phase 4 — Forensic modules
+- **DeepTrace AI** (existing, 57 KB, real): EXIF review, Error Level Analysis, noise residuals, copy-move detection, block-grid and geometry checks, EXIF timeline events. Reads the file, never writes it.
+- **VoiceProof AI** (existing, 34 KB, real): Librosa load, non-silent segments, silence map, splice-seam regularity heuristics, level statistics. Segment events are anchored to the file's mtime (not 1970).
+- **SpyTrace AI** (built this round, real): Androguard 4.1.3 static analysis — package identity, signing scheme + X.509 certificate extraction (subject/issuer/validity/self-signed), 20 weighted stalkerware permissions with risk bands, accessibility-service and boot-persistence heuristics, exported component surface from the manifest XML, embedded URLs/IPs/emails from DEX string tables.
+- **CyberSleuth AI** (built this round, real): UTF-8/UTF-16/latin-1 decoding, JSON-chat/CSV/WhatsApp/text structure detection, ISO/EU/WhatsApp timestamp parsing, regex entities (emails, URLs, IPs, phones, SHA-256), spaCy `en_core_web_sm` NER (PERSON/ORG/GPE/LOC/DATE/TIME/EVENT/NORP), timeline events with inline entity tags.
 
-**Documentation**
-```
-README.md                    (rewritten — full project documentation)
-DEVELOPMENT_STATUS.md        (rewritten)
-docs/ARCHITECTURE.md         (new)
-docs/API.md                  (new)
-docs/SECURITY.md             (new)
-.env.example                 (rewritten — Supabase + Gemini template)
-.gitignore                   (modified — project identity + evidence artefacts)
-```
+### Phase 5 — Correlation & AI explanation
+- Correlation engine now: attaches each artefact's **own SHA-256 as an entity** to its events, flattens **undated findings** for entity detection (kept out of the displayed timeline), and dedupes connections per (evidence₁, evidence₂, entity).
+- Gemini explanation layer runs **only when connections exist**, receives strictly structured findings, and degrades to `{available: false, reason}` on failure. Model updated `gemini-1.5-flash → gemini-2.5-flash → gemini-3.5-flash` (deprecated IDs removed by Google).
+- Relationship graph returned with evidence/event nodes and weighted edges; the UI renders a real SVG graph (not a placeholder).
+- Frontend Correlation page: investigation picker, POST run + GET latest run, timeline, connections, graph, Gemini explanation, honest investigator-review disclaimer.
 
-## Files Removed
+### Phase 6 — PDF reports
+- **Fixed**: `_para` now accepts a pre-built `ParagraphStyle` (was `STYLES[...]` on an object → crash).
+- **Fixed**: ReportLab `TableStyle` colour/width argument order (`LINEBELOW`/`LINEBEFORE`) — "Unknown color 1.5".
+- **Fixed**: upload-time metadata (e.g. an APK's 200-entry ZIP listing) could exceed page height — metadata values are coerced and truncated to 300 chars.
+- Report flow verified end-to-end: render → store under `reports/` → SHA-256 → download with auth + `X-Report-SHA256` header; a **10-page PDF** generated from the seeded case.
 
-Old **PROJECT NEXUS AI** frontend files, replaced by the CyberSleuth AI equivalents:
+### Phase 7 — Tests, security, deployment
+- **41 pytest tests**, all passing, against an isolated `cybersleuth_test` database (rebuilt per session, truncated per test, `NullPool` for cross-loop asyncpg safety):
+  - `test_auth.py` — register/login/me/refresh/logout, Argon2 verify, duplicate 409, wrong password 401, **429 rate limit after burst**
+  - `test_investigations.py` — CRUD, **409 on duplicate case_id** (was 500), RLS-scoped access, supervisor non-member 404
+  - `test_evidence.py` — upload + SHA-256 match, integrity-check, custody verify, 400 on disallowed extension, 401 unauthenticated, scoped listing, authenticated download bytes + header
+  - `test_forensics.py` — DeepTrace on real JPEG, CyberSleuth on chat JSON (structure/regex/timeline counts), correlation unit tests (hash-entity attachment, shared-entity links, timestamp match), 404 on inaccessible evidence
+  - `test_reports.py` — generate → `ready` → download `%PDF` bytes + SHA-256 header; list scoped to investigation
+  - `test_health.py` — health payload, security headers, 404
+- **Security hardening**: per-IP rate limiting on `/auth/login` (10/min) and `/auth/register` (5/min); security headers middleware (`nosniff`, `DENY`, `no-referrer`, `Permissions-Policy`, HSTS in production); refresh token now re-reads the profile **under RLS** (was returning 401 for every refresh); audit/custody append-only enforcement unchanged and now test-covered.
+- **Deployment**: backend `Dockerfile` (multi-stage, root build context, non-root user, healthcheck), `.dockerignore`, `render.yaml` blueprint (health check `/api/health`), Netlify config maintained, root `vite.config.ts` proxy target pinned to `127.0.0.1` (IPv6 `localhost` hang fixed).
+- Frontend: **all demo fallbacks removed** — real auth (JWT + refresh), live dashboard (recharts from DB), live investigations/evidence/audit views, real module pages (investigation → evidence picker → run → results), correlation UI with graph, reports with generate/download, **zero console/page errors** in Chromium.
+- Seeding: `scripts/seed_demo_data.py` reproduces the full demo from the live API idempotently.
 
-```
-frontend/src/components/Layout.tsx            (old NEXUS layout)
-frontend/src/components/CookieConsentBanner.tsx
-frontend/src/pages/CasesPage.tsx
-frontend/src/pages/ChatbotPage.tsx
-frontend/src/pages/CookiePolicyPage.tsx
-frontend/src/pages/DataDeletionPage.tsx
-frontend/src/pages/EchoPage.tsx
-frontend/src/pages/EvidencePage.tsx
-frontend/src/pages/MosaicPage.tsx
-frontend/src/pages/OnboardingPage.tsx
-frontend/src/pages/PrivacyPolicyPage.tsx
-frontend/src/pages/RefundPolicyPage.tsx
-frontend/src/pages/SettingsPages.tsx
-frontend/src/pages/TermsOfServicePage.tsx
-frontend/src/pages/TimeglassPage.tsx
-```
+---
 
-> The legacy Python/Streamlit `app/` directory and the old `backend/` remain in the
-> repository untouched. The backend is rebuilt for CyberSleuth AI in Phase 2.
+## Verification evidence (this session)
 
-## Dependencies Installed
+| Check | Result |
+| --- | --- |
+| `pytest -q` (backend) | **41 passed** |
+| `npx tsc --noEmit` (frontend) | **0 errors** |
+| `npm run build` (frontend) | ✅ built (783 kB JS / 228 kB gzip) |
+| Browser smoke (Chromium, 23 checks) | **ALL PASSED** — login → dashboard → investigations → evidence → DeepTrace run → reports → audit logs; **0 console errors, 0 page errors** |
+| Seeded case — Operation Silent Whisper | 2 cases · 6 evidence files · 7 module runs · 4–5 correlations (shared APK↔chat URL, shared sha256, timestamp matches) · 10-page PDF |
+| Gemini explanation | `available: true`, grounded in findings (model `gemini-3.5-flash`) |
+| PDF report download | 200, `%PDF` magic, `X-Report-SHA256` matches DB row |
+| RLS | Enforced by non-superuser `cybersleuth_app`; `INSERT ... RETURNING` fixed via migration 011 |
+| Browser console sweep | 0 errors on every visited route |
 
-| Package | Version | Purpose |
-|---|---|---|
-| `@supabase/supabase-js` | ^2.45.0 | Auth + database client (Phase 2) |
-| `recharts` | ^2.12.0 | Charts (Phase 2) |
-| `framer-motion` | ^11.3.0 | Animations |
-| `@radix-ui/react-slot` | latest | `asChild` composition for Button |
+---
 
-## Commands to Run
+## How to run
 
 ```bash
-cd frontend
-npm install          # already done
-copy .env.example .env   # add your VITE_* values locally
-npm run dev          # http://localhost:3000 (auto-increments if busy)
-npm run build        # type-check + production build
-npm run preview      # serve the production build
+# backend (first run creates embedded PG, applies migrations, seeds app role)
+cd backend && ..\.venv310\Scripts\python.exe -m uvicorn app.main:app --port 8000
+
+# frontend
+cd frontend && npm run dev          # http://localhost:3000
+
+# tests
+cd backend && ..\.venv310\Scripts\python.exe -m pytest -q
+
+# reseed (idempotent — safe to re-run)
+python scripts/seed_demo_data.py
 ```
 
----
-
-## Features Completed
-
-✅ Dark cyber-forensics design system with the exact specified palette  
-✅ Persistent sidebar with all 11 navigation destinations  
-✅ Contextual top navigation with per-route titles  
-✅ Responsive desktop / tablet / mobile layout  
-✅ Login + Registration with validation  
-✅ Protected routes and guest routes  
-✅ Session persistence (localStorage, Phase 1 demo mode)  
-✅ Dashboard with stat cards, quick actions, module access, recent investigations  
-✅ Investigations list with search + status filter  
-✅ Create Investigation form (case ID, title, category, priority, assignees, notes)  
-✅ Investigation detail with evidence, module launchers, quick links  
-✅ Evidence Vault with type filter + search + SHA-256 display  
-✅ Upload Evidence with client-side validation and SHA-256 computation  
-✅ All four forensic module screens with upload, run, loading, and results states  
-✅ Correlation Engine with timeline, connections, and relationship graph  
-✅ Reports generation flow with report ID and download action  
-✅ Audit Logs table  
-✅ Settings with Profile / Security / Notifications tabs  
-✅ Honest empty, loading, and error states throughout  
-✅ Explicit epistemic labelling (heuristic vs model vs AI explanation)  
-✅ No fabricated forensic findings presented as real  
-
-## Features Not Yet Connected
-
-| Feature | Blocked on | Notes |
-|---|---|---|
-| Live investigation/evidence data | Phase 2 | Pages show "Demo mode" empty state |
-| Real authentication (Supabase Auth) | Phase 2 | Demo credentials validated client-side |
-| Real forensic analysis (all 4 modules) | Phase 4 | Current run states return labelled sample payloads to demonstrate the UI contract |
-| Real correlation computation | Phase 5 | Current output demonstrates the result layout |
-| Real PDF report generation | Phase 6 | UI flow only |
-| Persistent audit logs | Phase 2 | Currently a static demo table |
-| Charts on the dashboard | Phase 2 | `recharts` installed, awaiting data |
-| Evidence download from storage | Phase 2 | Button present, backend not connected |
-| Investigator verification workflow | Phase 5 | `verified` flag modelled, no UI yet |
+Seeded sign-ins: `investigator@cybersleuth.ai / Investigator!2026` and `supervisor@cybersleuth.ai / Supervisor!2026` (**rotate in production**).
 
 ---
 
-## ⚠️ Security Notes
+## Known limitations (honest)
 
-1. **The pre-existing `.env` still contains live credentials from the earlier project**
-   (a Gemini key and SMTP credentials). Replace them with your own CyberSleuth AI
-   values and **rotate any key that has been shared or committed**.
-2. **Do not commit `.env`.** The root `.gitignore` now excludes `.env`, `.env.local`,
-   `frontend/.env*`, and `backend/.env*`.
-3. **Only `VITE_`-prefixed variables reach the browser.** `GEMINI_API_KEY` and
-   `SUPABASE_SERVICE_ROLE_KEY` must never be given a `VITE_` prefix.
-4. The Gemini key supplied in the build prompt was **not** written into any source
-   file, `.env.example`, or documentation. Add it yourself to `backend/.env` in Phase 5.
-5. **This Phase 1 build is not production-ready for real evidence.** It has no backend
-   and therefore no server-side authorisation. See `docs/SECURITY.md` § 11.
-
----
-
-## Next Step — Phase 2: Supabase
-
-**Objective:** Replace demo mode with a real, authorised, database-backed platform.
-
-1. Create a Supabase project; note the URL, anon key, and service-role key.
-2. Write the 11-table schema as SQL migrations in `supabase/migrations/`:
-   `profiles` · `investigations` · `investigation_members` · `evidence` ·
-   `analysis_results` · `evidence_events` · `forensic_timelines` · `chain_of_custody` ·
-   `generated_reports` · `audit_logs` · `correlation_results`
-3. Enable RLS on every table with `can_access_investigation()` helper policies.
-4. Create private storage buckets: `evidence-originals` (immutable),
-   `evidence-derived`, `reports`.
-5. Add the `handle_new_user` trigger to auto-create `profiles` rows.
-6. Scaffold the FastAPI backend: `app/core` (config, security, logging),
-   `app/security` (Supabase JWT verification, RBAC, case access),
-   `app/database` (client factory, repositories), `app/api` (routers).
-7. Implement `GET /api/health`, `GET /api/auth/me`, and full investigation CRUD.
-8. Replace the `AuthContext` demo implementation with real Supabase Auth.
-9. Point `frontend/src/services/api.ts` at the live backend and remove the demo
-   fallbacks from `DashboardPage` and `EvidenceVaultPage`.
-10. Add `pytest` coverage for auth, RBAC, investigation CRUD, and error handling.
-
-**Definition of done:** a signed-in user can create an investigation, and a second
-user who is not a member receives `403` (or `404`) for that investigation.
+1. No calibrated forensic models are bundled; findings are labelled `measured`/`heuristic` and `confidence_score` stays `null` — nothing is presented as a verdict.
+2. Rate limiting is in-memory per process (use Redis for multi-replica).
+3. The embedded PG is for development; production should use managed Postgres via `DATABASE_URL`/`APP_DATABASE_URL` (see `render.yaml`).
+4. Gemini explanation requires `GEMINI_API_KEY`; without it the correlation still runs and reports `available: false` with a reason.
+5. The seeded demo accounts must be removed or rotated in any real deployment; the default local DB password is development-only.
+6. ReportLab tables truncate upload-time metadata cell values to 300 chars to stay within page bounds.

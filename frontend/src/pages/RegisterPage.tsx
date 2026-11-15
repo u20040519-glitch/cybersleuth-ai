@@ -42,7 +42,7 @@ export function RegisterPage() {
         confirm_password: data.confirm_password,
         role: data.role as any,
       })
-      navigate('/login', { replace: true })
+      navigate('/dashboard', { replace: true })
     } catch (err: any) {
       setError(err.message || 'Registration failed. Please try again.')
     } finally {

@@ -33,23 +33,7 @@ export function LoginPage() {
     }
   }
 
-  const demoCreds = (
-    <div className="mt-6 p-3 rounded-lg bg-secondary border border-border text-xs">
-      <p className="text-text-secondary/70 mb-1 font-semibold mb-2">Demo credentials:</p>
-      <div className="flex gap-4">
-        <div>
-          <div className="text-text-main">Investigator</div>
-          <div className="text-text-secondary/50">investigator@cybersleuth.ai</div>
-          <div className="text-text-secondary/50">password123</div>
-        </div>
-        <div>
-          <div className="text-text-main">Supervisor</div>
-          <div className="text-text-secondary/50">supervisor@cybersleuth.ai</div>
-          <div className="text-text-secondary/50">password123</div>
-        </div>
-      </div>
-    </div>
-  )
+
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
@@ -80,7 +64,7 @@ export function LoginPage() {
             <Input
               label="Email Address"
               type="email"
-              placeholder="investigator@cybersleuth.ai"
+              placeholder="you@agency.gov"
               {...register('email')}
               error={errors.email?.message}
             />
@@ -110,8 +94,6 @@ export function LoginPage() {
               )}
             </Button>
           </form>
-
-          {demoCreds}
 
           <div className="mt-6 text-center">
             <p className="text-text-secondary/60 text-sm">

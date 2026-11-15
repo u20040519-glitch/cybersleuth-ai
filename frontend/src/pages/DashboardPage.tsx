@@ -9,65 +9,93 @@ import { Badge } from '@/ui/Badge'
 import { EmptyState } from '@/ui/EmptyState'
 import { LoadingSpinner } from '@/ui/LoadingSpinner'
 import { Button } from '@/ui/Button'
-import { LayoutDashboard, FileText, ShieldCheck, Image, Smartphone, Mic, Code, Activity, FileScan, Plus, Upload } from 'lucide-react'
+import {
+  LayoutDashboard,
+  FileText,
+  ShieldCheck,
+  Image,
+  Smartphone,
+  Mic,
+  Code,
+  Activity,
+  FileScan,
+  Plus,
+  Upload,
+  AlertCircle,
+} from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
-import { Link } from 'react-router-dom'
-import { investigationsAPI } from '@/services/api'
+import { Link, useNavigate } from 'react-router-dom'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { dashboardAPI } from '@/services/api'
+import { formatBytes } from '@/utils/format'
 
-const moduleStats = [
+const moduleAccess = [
   { name: 'DeepTrace AI', href: '/deeptrace', icon: Image, color: 'text-primary-blue' },
   { name: 'SpyTrace AI', href: '/spytrace', icon: Smartphone, color: 'text-primary-cyan' },
   { name: 'VoiceProof AI', href: '/voiceproof', icon: Mic, color: 'text-primary-blue' },
   { name: 'CyberSleuth AI', href: '/cybersleuth', icon: Code, color: 'text-primary-cyan' },
 ]
 
+const MODULE_LABELS: Record<string, string> = {
+  deeptrace: 'DeepTrace',
+  spytrace: 'SpyTrace',
+  voiceproof: 'VoiceProof',
+  cybersleuth: 'CyberSleuth',
+}
+
 export function DashboardPage() {
   const { user } = useAuth()
-  const [investigations, setInvestigations] = useState<any[]>([])
+  const navigate = useNavigate()
+  const [stats, setStats] = useState<any | null>(null)
   const [loading, setLoading] = useState(true)
-  const [demo, setDemo] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    investigationsAPI.list()
+    let cancelled = false
+    dashboardAPI
+      .stats()
       .then((res) => {
-        setInvestigations(res.data || [])
-        setLoading(false)
+        if (!cancelled) {
+          setStats(res.data)
+          setLoading(false)
+        }
       })
       .catch(() => {
-        setDemo(true)
-        setLoading(false)
+        if (!cancelled) {
+          setError('The dashboard could not reach the backend. Make sure the API is running and you are signed in.')
+          setLoading(false)
+        }
       })
+    return () => {
+      cancelled = true
+    }
   }, [])
 
-  const totalInvestigations = demo ? 4 : investigations.length
-  const totalEvidence = demo ? 12 : investigations.reduce((s, i) => s + (i.evidence_count || 0), 0)
-  const completedAnalyses = demo ? 8 : investigations.filter((i) => i.status === 'closed').length
-  const pendingReviews = demo ? 2 : investigations.filter((i) => i.status === 'review').length
-
-  // While the request is in flight we must not render a hard "0" — that reads as
-  // a real measurement. Show a placeholder until the true value is known.
-  const v = (n: number) => (loading ? '—' : n)
+  const v = (n?: number | null) => (loading ? '—' : n ?? 0)
+  const recent: any[] = stats?.recent_investigations ?? []
+  const moduleRuns: Array<{ module: string; runs: number }> = Object.entries(stats?.module_runs ?? {}).map(
+    ([module, runs]) => ({ module: MODULE_LABELS[module] ?? module, runs: Number(runs) }),
+  )
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h2 className="text-2xl font-bold text-text-main">Dashboard</h2>
-        <p className="text-text-secondary">
-          Welcome back, {user?.full_name}. Here&apos;s your forensic command centre.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-text-main">Dashboard</h2>
+          <p className="text-text-secondary">
+            Welcome back, {user?.full_name}. Here&apos;s your forensic command centre.
+          </p>
+        </div>
+        <Badge variant="info" className="self-start sm:self-auto">
+          Live data · {stats?.generated_at ? new Date(stats.generated_at).toLocaleTimeString() : '—'}
+        </Badge>
       </div>
 
-      {/* Demo-mode disclosure */}
-      {demo && (
-        <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-warning/10 border border-warning/20">
-          <Badge variant="warning" className="uppercase tracking-wider">
-            Demo Data
-          </Badge>
-          <p className="text-xs text-text-secondary">
-            The backend is not running, so these figures are illustrative sample values —
-            not real case data.
-          </p>
+      {error && (
+        <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-error/10 border border-error/20">
+          <AlertCircle size={18} className="text-error shrink-0" />
+          <p className="text-sm text-error">{error}</p>
         </div>
       )}
 
@@ -75,39 +103,35 @@ export function DashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Total Investigations"
-          value={v(totalInvestigations)}
-          subtitle="Active cases"
+          value={v(stats?.total_investigations)}
+          subtitle="Cases in this workspace"
           icon={FileText}
           color="text-primary-blue"
-          trend={{ value: 12, label: 'vs last month', positive: true }}
         />
         <StatCard
           title="Evidence Files"
-          value={v(totalEvidence)}
-          subtitle="Securely stored"
+          value={v(stats?.evidence_files)}
+          subtitle={stats?.total_evidence_bytes ? `${formatBytes(stats.total_evidence_bytes)} secured` : 'Securely stored'}
           icon={FileScan}
           color="text-primary-cyan"
-          trend={{ value: 5, label: 'vs last month', positive: true }}
         />
         <StatCard
           title="Completed Analyses"
-          value={v(completedAnalyses)}
-          subtitle="Forensic modules"
+          value={v(stats?.analysis_runs)}
+          subtitle="Forensic module runs"
           icon={ShieldCheck}
           color="text-success"
-          trend={{ value: 8, label: 'vs last month', positive: true }}
         />
         <StatCard
           title="Pending Reviews"
-          value={v(pendingReviews)}
+          value={v(stats?.pending_reviews)}
           subtitle="Awaiting supervisor"
           icon={Activity}
           color="text-warning"
-          trend={{ value: -3, label: 'vs last month', positive: false }}
         />
       </div>
 
-      {/* Quick actions + module access */}
+      {/* Quick actions + module access + recent investigations */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Quick actions */}
         <div className="lg:col-span-1">
@@ -137,7 +161,7 @@ export function DashboardPage() {
         <Card>
           <CardHeader title="Forensic Modules" subtitle="All modules share the same investigation context" />
           <div className="space-y-3">
-            {moduleStats.map((m) => (
+            {moduleAccess.map((m) => (
               <Link
                 key={m.name}
                 to={m.href}
@@ -159,7 +183,7 @@ export function DashboardPage() {
             <div className="h-48 flex items-center justify-center">
               <LoadingSpinner size="md" />
             </div>
-          ) : demo || investigations.length === 0 ? (
+          ) : recent.length === 0 ? (
             <EmptyState
               icon={FileText}
               title="No investigations yet"
@@ -174,39 +198,67 @@ export function DashboardPage() {
             />
           ) : (
             <div className="space-y-2">
-              {investigations.slice(0, 5).map((inv) => (
-                <div
+              {recent.map((inv) => (
+                <button
                   key={inv.id}
-                  className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors cursor-pointer"
-                  onClick={() => {}}
+                  onClick={() => navigate(`/investigations/${inv.id}`)}
+                  className="w-full flex items-center justify-between p-3 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors text-left"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center text-xs font-mono text-text-secondary">
-                      {inv.case_id?.slice(-4) || 'CASE'}
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center text-xs font-mono text-text-secondary shrink-0">
+                      {(inv.case_id || 'CASE').slice(-4)}
                     </div>
-                    <div>
-                      <p className="text-sm text-text-main">{inv.title}</p>
+                    <div className="min-w-0">
+                      <p className="text-sm text-text-main truncate">{inv.title}</p>
                       <p className="text-xs text-text-secondary/60">{inv.category}</p>
                     </div>
                   </div>
                   <Badge variant={inv.priority === 'critical' || inv.priority === 'high' ? 'error' : 'info'}>
                     {inv.priority}
                   </Badge>
-                </div>
+                </button>
               ))}
             </div>
           )}
         </Card>
       </div>
 
-      {/* Analysis distribution chart placeholder */}
+      {/* Analysis distribution across modules */}
       <Card>
-        <CardHeader title="Analysis Distribution Across Modules" />
-        <div className="h-64 flex items-center justify-center">
-          <div className="text-text-secondary/50 text-sm">
-            Charts connect to live data in Phase 2 (backend + database).
+        <CardHeader
+          title="Analysis Distribution Across Modules"
+          subtitle="Completed module runs, counted from the database"
+        />
+        {loading ? (
+          <div className="h-64 flex items-center justify-center">
+            <LoadingSpinner size="md" />
           </div>
-        </div>
+        ) : moduleRuns.length === 0 ? (
+          <div className="h-40 flex items-center justify-center text-text-secondary/50 text-sm">
+            No forensic analyses have been run yet. Upload evidence and use a module to begin.
+          </div>
+        ) : (
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={moduleRuns} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1f2d44" />
+                <XAxis dataKey="module" stroke="#91A4BE" tick={{ fontSize: 12 }} />
+                <YAxis allowDecimals={false} stroke="#91A4BE" tick={{ fontSize: 12 }} />
+                <Tooltip
+                  cursor={{ fill: 'rgba(59, 130, 246, 0.08)' }}
+                  contentStyle={{
+                    background: '#111B2B',
+                    border: '1px solid #1f2d44',
+                    borderRadius: 8,
+                    color: '#E6F0FF',
+                    fontSize: 12,
+                  }}
+                />
+                <Bar dataKey="runs" name="Analysis runs" fill="#3B82F6" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
       </Card>
     </div>
   )

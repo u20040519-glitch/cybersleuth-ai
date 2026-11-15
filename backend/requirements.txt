@@ -1,39 +1,49 @@
 # =============================================================================
 # CYBERSLEUTH AI - Backend dependencies
 # =============================================================================
-# TARGET DEPENDENCY SET - the backend implementation lands in Phase 2.
-#
-# The list below is the planned, minimal set for the CyberSleuth AI FastAPI
-# service. Only libraries that provide real functionality are included.
-#
-#   pip install -r requirements.txt
+# Python 3.10+ (3.10/3.11 recommended for binary wheel coverage of the
+# forensic stack: opencv, librosa/numba, spacy).
 # =============================================================================
 
-# --- Web framework ---
-fastapi>=0.115.0
-uvicorn[standard]>=0.32.0
-pydantic>=2.9.0
-pydantic-settings>=2.6.0
+# --- Web framework -------------------------------------------------------
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+python-multipart==0.0.20
+pydantic==2.10.4
+pydantic-settings==2.7.1
+email-validator==2.2.0
 
-# --- Database & auth ---
-supabase>=2.10.0
-asyncpg>=0.30.0
-python-jose[cryptography]>=3.3.0
+# --- Database ------------------------------------------------------------
+sqlalchemy[asyncio]==2.0.36
+asyncpg==0.30.0
+pgserver==0.1.4          # portable embedded PostgreSQL for local development
+alembic==1.14.0
 
-# --- Background jobs (long-running forensic analysis) ---
-celery>=5.4.0
-redis>=5.2.0
+# --- Auth / crypto -------------------------------------------------------
+pyjwt==2.10.1
+argon2-cffi==23.1.0
+cryptography==44.0.0
 
-# --- Forensic engines ---
-opencv-python>=4.10.0        # DeepTrace: frame extraction, image analysis
-Pillow>=11.0.0               # DeepTrace: image loading / thumbnails
-librosa>=0.10.2              # VoiceProof: waveform, spectrogram, features
-soundfile>=0.12.1            # VoiceProof: audio I/O
-numpy>=1.26.0                # VoiceProof / CyberSleuth: array processing
-scipy>=1.14.0                # VoiceProof: signal processing
-spacy>=3.8.0                 # CyberSleuth: entity extraction
-networkx>=3.4.0              # CyberSleuth: relationship graph
-androguard>=4.1.3            # SpyTrace: APK static analysis
+# --- HTTP / AI -----------------------------------------------------------
+httpx==0.28.1
+google-generativeai==0.8.4
+supabase==2.9.0              # only used when SUPABASE_URL is configured
 
-# --- Reports ---
-reportlab>=4.2.5             # Phase 6: PDF forensic report
+# --- Forensic modules ----------------------------------------------------
+opencv-python-headless==4.10.0.84
+numpy==1.26.4
+androguard==4.1.3
+librosa==0.10.2.post1
+soundfile==0.12.1
+spacy==3.8.3
+networkx==3.4.2
+
+# --- Reports -------------------------------------------------------------
+reportlab==4.2.5
+pillow==11.0.0
+filetype==1.2.0
+
+# --- Testing -------------------------------------------------------------
+pytest==8.3.4
+pytest-asyncio==0.25.0
+pytest-cov==6.0.0

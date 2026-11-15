@@ -1,0 +1,63 @@
+{
+  "name": "CyberSleuth AI - Ubuntu 22.04",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "..",
+    "args": {
+      "USERNAME": "vscode",
+      "USER_UID": "1000",
+      "USER_GID": "1000"
+    }
+  },
+  "remoteUser": "vscode",
+  "workspaceFolder": "/workspace/${localWorkspaceFolderBasename}",
+  "updateRemoteUserUID": true,
+  "shutdownAction": "stopContainer",
+  "remoteEnv": {
+    "PYTHONPATH": "${containerWorkspaceFolder}/backend",
+    "PYTHONUNBUFFERED": "1",
+    "PIP_DISABLE_PIP_VERSION_CHECK": "1",
+    "VITE_API_BASE_URL": "/api"
+  },
+  "forwardPorts": [3000, 8000],
+  "portsAttributes": {
+    "3000": {
+      "label": "Frontend (Vite)",
+      "onAutoForward": "openPreview"
+    },
+    "8000": {
+      "label": "API (FastAPI)",
+      "onAutoForward": "silent"
+    }
+  },
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+  "postStartCommand": "bash .devcontainer/post-start.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.debugpy",
+        "ms-python.vscode-pylance",
+        "dbaeumer.vscode-eslint",
+        "bradlc.vscode-tailwindcss",
+        "editorconfig.editorconfig"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/bin/python3.10",
+        "python.terminal.activateEnvInCurrentTerminal": true,
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "files.watcherExclude": {
+          "**/backend/.pgdata/**": true,
+          "**/backend/.pgdata_test/**": true,
+          "**/backend/storage/**": true,
+          "**/frontend/node_modules/**": true
+        },
+        "search.exclude": {
+          "**/backend/.pgdata/**": true,
+          "**/frontend/node_modules/**": true
+        },
+        "eslint.workingDirectories": ["${workspaceFolder}/frontend"]
+      }
+    }
+  }
+}

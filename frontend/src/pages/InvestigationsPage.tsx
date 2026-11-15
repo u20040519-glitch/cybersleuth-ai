@@ -10,6 +10,7 @@ import { LoadingSpinner } from '@/ui/LoadingSpinner'
 import { Button } from '@/ui/Button'
 import { Input } from '@/ui/Input'
 import { FileText, Search, Filter, Plus, ChevronRight } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { investigationsAPI } from '@/services/api'
 
 const STATUS_FILTERS = ['all', 'draft', 'active', 'review', 'closed', 'archived']
@@ -33,21 +34,26 @@ function statusVariant(status: string): 'success' | 'warning' | 'error' | 'info'
 export function InvestigationsPage() {
   const [investigations, setInvestigations] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [demo, setDemo] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('all')
 
-  useEffect(() => {
-    investigationsAPI.list()
+  const load = () => {
+    setLoading(true)
+    setError(null)
+    investigationsAPI
+      .list()
       .then((res) => {
         setInvestigations(res.data || [])
         setLoading(false)
       })
       .catch(() => {
-        setDemo(true)
+        setError('Investigations could not be loaded. Check that the API is running, then retry.')
         setLoading(false)
       })
-  }, [])
+  }
+
+  useEffect(load, [])
 
   const filtered = investigations.filter((inv) => {
     const matchSearch =
@@ -68,9 +74,9 @@ export function InvestigationsPage() {
         </div>
         <div className="flex items-center gap-3">
           <Button variant="primary" asChild>
-            <a href="/investigations/create">
+            <Link to="/investigations/create">
               <Plus size={16} /> New Investigation
-            </a>
+            </Link>
           </Button>
         </div>
       </div>
@@ -123,22 +129,29 @@ export function InvestigationsPage() {
                   <LoadingSpinner size="md" />
                 </td>
               </tr>
-            ) : demo || filtered.length === 0 ? (
+            ) : error ? (
+              <tr>
+                <td colSpan={7} className="h-64 text-center">
+                  <div className="flex flex-col items-center gap-4">
+                    <p className="text-sm text-error max-w-md">{error}</p>
+                    <Button variant="secondary" size="sm" onClick={load}>
+                      Retry
+                    </Button>
+                  </div>
+                </td>
+              </tr>
+            ) : filtered.length === 0 ? (
               <tr>
                 <td colSpan={7} className="h-64 text-center">
                   <EmptyState
                     icon={FileText}
-                    title={demo ? 'Demo mode — no investigations' : 'No investigations found'}
-                    description={
-                      demo
-                        ? 'Connect the backend in Phase 2 to see real investigation data.'
-                        : 'Try adjusting your search or filters.'
-                    }
+                    title="No investigations found"
+                    description="Try adjusting your search or filters."
                     action={
                       <Button variant="primary" asChild>
-                        <a href="/investigations/create">
+                        <Link to="/investigations/create">
                           <Plus size={16} /> Create Investigation
-                        </a>
+                        </Link>
                       </Button>
                     }
                   />
@@ -168,9 +181,9 @@ export function InvestigationsPage() {
                   <td className="py-4 text-xs text-text-secondary">{inv.evidence_count || 0}</td>
                   <td className="py-4 text-right">
                     <Button variant="ghost" size="sm" className="text-text-secondary/60 hover:text-primary-cyan" asChild>
-                      <a href={`/investigations/${inv.id}`}>
+                      <Link to={`/investigations/${inv.id}`}>
                         <ChevronRight size={14} />
-                      </a>
+                      </Link>
                     </Button>
                   </td>
                 </tr>

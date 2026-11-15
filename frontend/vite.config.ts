@@ -22,7 +22,9 @@ export default defineConfig({
     // required for Cloudflare quick tunnels (random <name>.trycloudflare.com).
     allowedHosts: ['.trycloudflare.com', '.loca.lt', 'localhost'],
     proxy: {
-      '/api': 'http://localhost:8000',
+      // Keep the proxy target on IPv4 loopback: the backend uvicorn binds
+      // 127.0.0.1, and "localhost" alone can hang on IPv6-first resolvers.
+      '/api': 'http://127.0.0.1:8000',
     },
   },
   preview: {

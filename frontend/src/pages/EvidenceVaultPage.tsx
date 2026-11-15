@@ -10,6 +10,7 @@ import { Button } from '@/ui/Button'
 import { Input } from '@/ui/Input'
 import { FileScan, Search, Filter, FileImage, FileVideo, FileAudio, FileText, FileCode, Download, ShieldCheck } from 'lucide-react'
 import { formatBytes, truncateHash, getFileCategory } from '@/utils/format'
+import { Link } from 'react-router-dom'
 import { evidenceAPI } from '@/services/api'
 
 const CATEGORY_ICONS: Record<string, React.ElementType> = {
@@ -27,12 +28,14 @@ const CATEGORIES = ['all', 'image', 'video', 'audio', 'document', 'data', 'andro
 export function EvidenceVaultPage() {
   const [evidence, setEvidence] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [demo, setDemo] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('all')
+  const [downloadingId, setDownloadingId] = useState<string | null>(null)
 
-  useEffect(() => {
-    // Phase 2: live list from /api/evidence
+  const load = () => {
+    setLoading(true)
+    setError(null)
     evidenceAPI
       .list()
       .then((res) => {
@@ -40,10 +43,31 @@ export function EvidenceVaultPage() {
         setLoading(false)
       })
       .catch(() => {
-        setDemo(true)
+        setError('Evidence could not be loaded. Check that the API is running, then retry.')
         setLoading(false)
       })
-  }, [])
+  }
+
+  useEffect(load, [])
+
+  const handleDownload = async (item: any) => {
+    setDownloadingId(item.id)
+    try {
+      const res = await evidenceAPI.download(item.id)
+      const url = URL.createObjectURL(res.data as Blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = item.original_filename || 'evidence'
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+    } catch {
+      setError('The evidence file could not be downloaded.')
+    } finally {
+      setDownloadingId(null)
+    }
+  }
 
   const filtered = useMemo(
     () =>
@@ -68,10 +92,10 @@ export function EvidenceVaultPage() {
         </div>
         <div className="flex items-center gap-3">
           <Button variant="primary" asChild>
-            <a href="/evidence/upload">
+            <Link to="/evidence/upload">
               <FileScan size={16} className="mr-2" />
               Upload Evidence
-            </a>
+            </Link>
           </Button>
         </div>
       </div>
@@ -108,23 +132,32 @@ export function EvidenceVaultPage() {
         <div className="h-80 flex items-center justify-center">
           <LoadingSpinner size="md" />
         </div>
-      ) : demo || filtered.length === 0 ? (
+      ) : error && evidence.length === 0 ? (
         <EmptyState
           icon={FileScan}
-          title={demo ? 'Demo mode — no evidence' : 'No evidence files'}
+          title="Could not load evidence"
+          description={error}
+          action={
+            <Button variant="secondary" onClick={load}>
+              Retry
+            </Button>
+          }
+        />
+      ) : filtered.length === 0 ? (
+        <EmptyState
+          icon={FileScan}
+          title="No evidence files"
           description={
-            demo
-              ? 'Connect the backend in Phase 2 to view real evidence with integrity status.'
-              : search || category !== 'all'
-                ? 'No files match your search or filter.'
-                : 'Upload your first evidence file to begin.'
+            search || category !== 'all'
+              ? 'No files match your search or filter.'
+              : 'Upload your first evidence file to begin.'
           }
           action={
             <Button variant="primary" asChild>
-              <a href="/evidence/upload">
+              <Link to="/evidence/upload">
                 <FileScan size={16} className="mr-2" />
                 Upload Evidence
-              </a>
+              </Link>
             </Button>
           }
         />
@@ -169,9 +202,14 @@ export function EvidenceVaultPage() {
                       </Badge>
                     </td>
                     <td className="py-4 text-right">
-                      <Button variant="ghost" size="sm">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={downloadingId === e.id}
+                        onClick={() => handleDownload(e)}
+                      >
                         <Download size={14} className="mr-1" />
-                        Download
+                        {downloadingId === e.id ? 'Downloading…' : 'Download'}
                       </Button>
                     </td>
                   </tr>

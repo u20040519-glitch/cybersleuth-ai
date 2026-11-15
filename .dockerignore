@@ -1,0 +1,34 @@
+# Version control / local state
+.git
+.gitignore
+**/__pycache__
+**/*.pyc
+.pgdata
+.pgdata_test
+.pytest_cache
+.venv
+.venv310
+
+# Local evidence and artefacts must never enter an image
+backend/storage
+uploads
+evidence
+scratch-evidence
+scratch-e2e
+*.apk
+
+# Frontend build output (deployed separately on Netlify)
+frontend/node_modules
+frontend/dist
+
+# Secrets - the image gets configuration from the platform environment
+.env
+.env.*
+!.env.example
+
+# Docs and dev tooling not needed at runtime
+docs
+*.md
+!backend/README.md
+scripts
+.vscode

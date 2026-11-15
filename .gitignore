@@ -175,3 +175,11 @@ vitest.config.cjs.timestamp-*.mjs
 vitest.config.ts.timestamp-*.mjs
 vitest.config.mts.timestamp-*.mjs
 vitest.config.cts.timestamp-*.mjs
+
+# Local embedded PostgreSQL & throwaway venvs
+.venv310/
+.pgdata_test/
+backend/.pgdata/
+
+scratch-evidence/
+

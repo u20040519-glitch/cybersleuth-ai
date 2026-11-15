@@ -1,10 +1,25 @@
-# CyberSleuth AI — Architecture
+# CyberSleuth AI - Architecture
 
 > Multimodal AI-Powered Digital Forensics & Evidence Reconstruction Platform
 
 This document describes the system design for CyberSleuth AI. It covers the three-layer
 architecture, the database model, the four forensic modules, the correlation engine, and
 the epistemic model that keeps technical observation separate from AI interpretation.
+
+> **Implementation status (as built, 2026-11).** The system below is implemented and
+> running in this repository. Two deltas from the original design notes remain and are
+> documented inline:
+>
+> - Analysis runs **synchronously** inside the HTTP request (modules are CPU-bound and
+>   take seconds; a background queue is a future scaling option, not a requirement for
+>   correctness). There is no polling job API.
+> - Authentication is issued by **this backend** (HS256 JWT), not by Supabase Auth,
+>   although identities and the profile trigger mirror Supabase's model so the same
+>   schema works on both. See `SUPABASE_URL` in the README for the cloud path.
+>
+> Local development runs a portable embedded PostgreSQL (`app.database.local_postgres`)
+> with the same migrations, RLS policies and restricted `cybersleuth_app` runtime role
+> that Supabase uses. Nothing differs between environments except the DSN.
 
 ---
 
@@ -27,11 +42,11 @@ The platform must never blur these six categories:
 
 | Layer | Meaning | Stored as |
 |---|---|---|
-| **Observed fact** | Directly extracted from the artefact (byte values, hashes, timestamps) | `analysis_results.findings[].observed` |
-| **Extracted artefact** | Derived deterministic output (frames, entities, permissions) | `analysis_results.artifacts[]` |
-| **Model prediction** | Output of a calibrated ML model, with a confidence value | `analysis_results.confidence_score` |
-| **AI explanation** | Gemini prose grounded in the above | `analysis_results.explanation` |
-| **Investigative hypothesis** | Human reasoning connecting findings | `correlation_results` (unverified) |
+| **Measured observation** | Computed directly from the artefact (EXIF values, hashes, PCM levels, string tables) | `analysis_results.findings[]` with `method: "measured"` |
+| **Heuristic indicator** | Rule-based indicator, labelled as a heuristic, never as proof | `findings[]` with `method: "heuristic"` |
+| **Model prediction** | Output of a calibrated ML model, with a confidence value (none bundled today) | `confidence_score` (nullable) |
+| **AI explanation** | Gemini prose grounded strictly in the above | `correlation_results` / API `explanation` object |
+| **Investigative hypothesis** | Human reasoning / cross-evidence linkage candidates | `correlation_results` with `verified = false` |
 | **Verified finding** | Hypothesis accepted by an investigator | `correlation_results.verified = true` |
 
 A UI element must never render an AI explanation with the same visual weight as an
@@ -62,13 +77,13 @@ plausible-looking confidence number.
 │                                                                         │
 │  Cross-cutting: AuthContext · Axios apiClient · RouteGuard              │
 └────────────────────────────────┬────────────────────────────────────────┘
-                                 │  HTTPS + Authorization: Bearer <supabase_jwt>
+                                 │  HTTPS + Authorization: Bearer <backend JWT>
                                  ▼
 ┌─────────────────────────────────────────────────────────────────────────┐
 │  APPLICATION — FastAPI (Python)                                        │
 │                                                                         │
 │  Middleware      CORS allowlist · request ID · structured logging       │
-│  Auth            Supabase JWT verification → AuthContext (user, role)   │
+│  Auth            Backend JWT verification            → AuthContext (user, role)   │
 │  Authorisation   require_role() · require_case_access()  ← not UI hiding │
 │  Routers         evidence · deeptrace · spytrace · voiceproof ·         │
 │                  cybersleuth · correlation · reports · audit · health   │
@@ -76,16 +91,17 @@ plausible-looking confidence number.
 │  Forensic engines deeptrace/ spytrace/ voiceproof/ cybersleuth/          │
 └──────┬─────────────────────────────────────────────┬───────────────────┘
        │                                             │
-       │ Supabase client (service role, with explicit │
-       │ per-resource authorisation re-check)         │  Gemini API
-       ▼                                             ▼
-┌──────────────────────────────┐        ┌───────────────────────────────┐
-│  DATA — Supabase PostgreSQL  │        │  AI — Google Gemini           │
-│  11 tables · RLS on every    │        │  Explanations, summaries,     │
-│  table · UUID PKs · FKs      │        │  correlation narratives,      │
-│  Storage: private buckets    │        │  report drafts.               │
-└──────────────────────────────┘        │  NEVER a detection engine.    │
-                                        └───────────────────────────────┘
+        | Supabase client optional; runtime uses     |
+        | the restricted cybersleuth_app role         |  Gemini API
+        v                                             v
++------------------------------+        +-------------------------------+
+|  DATA - PostgreSQL (local    |        |  AI - Google Gemini           |
+|  embedded or Supabase)       |        |  Explanations, summaries and  |
+|  11 tables - RLS on every    |        |  correlation narratives.      |
+|  table - UUID PKs - FKs      |        |  NEVER a detection engine.    |
+|  Storage: local FS or        |        +-------------------------------+
+|  Supabase private buckets    |
++------------------------------+
 ```
 
 ### 2.1 Backend layer responsibilities
@@ -95,12 +111,12 @@ plausible-looking confidence number.
 | Routers | `app/api/` | HTTP contract, validation, status codes |
 | Schemas | `app/schemas/` | Pydantic request/response models |
 | Core | `app/core/` | Config, security, logging, exceptions |
-| Security | `app/security/` | Supabase token verification, RBAC, case access |
-| Services | `app/services/` | Storage, hashing, Gemini client, job dispatcher, audit writer |
+| Security | `app/security/` | Backend JWT verification, RBAC, case access |
+| Services | `app/services/` | Storage, hashing, Gemini client, audit writer |
 | Forensic | `app/forensic/` | The four module engines (pure analysis, no I/O) |
 | Correlation | `app/correlation/` | Entity normalisation, timeline builder, graph builder |
 | Reports | `app/reports/` | PDF renderer |
-| Database | `app/database/` | Supabase client factory, repositories |
+| Database | `app/database/` | Embedded PG bootstrap, migration runner, RLS provisioning, session factory |
 
 The forensic engines are deliberately **pure functions over bytes → structured findings**.
 They receive a file path and configuration, and return a serialisable dict. They never
@@ -171,7 +187,7 @@ investigations ──────────────── evidence ──�
 
 | Table | Responsibility |
 |---|---|
-| `profiles` | One row per Supabase Auth user; carries the `role` used by RBAC. Created by trigger on `auth.users` insert. |
+| `profiles` | One row per identity; carries the `role` used by RBAC. Created by trigger on `auth.users` insert. |
 | `investigations` | The case container. `case_id` is the human-readable reference; `id` is the UUID used everywhere internally. |
 | `investigation_members` | Explicit many-to-many authorisation. A user may read an investigation only if they are the owner **or** a member. |
 | `evidence` | File metadata only — never file bytes. `sha256_hash` is the integrity anchor. `storage_path` points into a private bucket. |
@@ -185,7 +201,7 @@ investigations ──────────────── evidence ──�
 
 ### 3.2 Storage layout
 
-Private Supabase buckets:
+Private buckets (local filesystem or Supabase Storage):
 
 | Bucket | Contents | Mutability |
 |---|---|---|
@@ -449,28 +465,27 @@ than invoking the model at all.
 
 ---
 
-## 6. Background Job Processing
+## 6. Analysis Execution (as built)
 
-Long-running analysis (frame extraction, APK parsing, spectrogram rendering, correlation
-across many evidence items) must not block the HTTP request.
+Analysis runs synchronously inside the HTTP request. Modules are CPU-bound and finish
+in seconds on realistic evidence (DeepTrace ~2s on a 1280-px image, SpyTrace ~15s on an
+8.5 MB APK, VoiceProof ~17s on a 9s WAV, CyberSleuth <2s on small artefacts), so a
+queue adds complexity without benefit at this scale.
 
 ```
   POST /api/deeptrace/analyze
-        │
-        ├─► validate request, authorise evidence access
-        ├─► create analysis_results row  (status = "pending")
-        ├─► dispatch background job       → returns 202 + analysis_id
-        │
-        └─► worker picks up job
-              ├─► status = "running"
-              ├─► run engine (bytes → findings)
-              ├─► status = "completed" | "failed" (+ error_message)
-              └─► write derived artefacts to storage
+        |
+        |-- validate request, authorise (404 for non-members)
+        |-- materialise the evidence to a temp file (never the original)
+        |-- run the module in a worker thread (asyncio.to_thread)
+        |-- persist analysis_results (status completed|failed) + custody event
+        |-- return 200 with the stored result row
 ```
 
-The client polls `GET /api/analysis/{id}/status`. The worker implementation is
-swappable — in-process `BackgroundTasks` for local development, and a Celery/RQ worker
-with Redis for production, behind the same `JobDispatcher` interface.
+If a module cannot run (missing dependency, wrong file class), the response is
+`status: "unavailable"` with a machine-readable reason - never fabricated numbers.
+A background queue (in-process BackgroundTasks for single replicas, Celery/RQ + Redis
+for multi-replica) is a deliberate future option, not a current requirement.
 
 ---
 
@@ -483,7 +498,7 @@ frontend/src/
 │   ├── ui/              Button · Card · StatCard · Badge · Input · EmptyState · LoadingSpinner
 │   └── RouteGuard.tsx   ProtectedRoute · GuestRoute
 ├── pages/               16 route components (one per screen)
-├── context/AuthContext  Supabase-ready session state
+├── context/AuthContext  Backend JWT session (login/register/refresh/logout)
 ├── services/api.ts      Axios client + typed endpoint wrappers
 ├── hooks/               (Phase 2: TanStack Query hooks)
 ├── types/               Shared TypeScript domain types
@@ -500,14 +515,15 @@ for form drafts and ephemeral UI state. Never mirror server data into local stat
 
 ---
 
-## 8. Deployment Topology
+## 8. Deployment Topology (as implemented)
 
 | Component | Platform | Configuration |
 |---|---|---|
-| Frontend | Vercel | Build `npm run build`, output `dist`; env vars from Vercel project settings |
-| Backend | Render / Railway | `uvicorn app.main:app --host 0.0.0.0 --port $PORT`; env vars from platform dashboard |
-| Database + Auth + Storage | Supabase | Migrations applied via Supabase CLI or SQL editor; RLS enabled before first write |
-| CI | GitHub Actions | `npm run build` + `pytest` on every push to `main` |
+| Frontend | Netlify | `netlify.toml`: base `frontend`, `npm run build`, publish `dist`, SPA fallback, security headers; set `VITE_API_BASE_URL` |
+| Backend | Render (blueprint `render.yaml`) or Railway | `docker build -t cybersleuth-api -f backend/Dockerfile .` (repo root context); health check `/api/health` |
+| Database | Embedded PG (local dev) / managed Postgres or Supabase | `DATABASE_URL` for migrations only; `APP_DATABASE_URL` for the restricted runtime role; same migrations in both |
+| Storage | Local FS (`backend/storage/`) or Supabase Storage | `STORAGE_BACKEND=local|supabase` |
+| AI explanation | Google Gemini | `GEMINI_API_KEY` + `GEMINI_MODEL=gemini-3.5-flash`; backend-only |
 
 CORS is restricted to the configured frontend origins via `FRONTEND_URL` /
 `CORS_ORIGINS`. Credentials are not shared across origins.
@@ -521,7 +537,7 @@ To add a fifth forensic module:
 1. Implement `app/forensic/<module>/engine.py` exposing
    `analyse(file_path: Path, config: ModuleConfig) -> dict` — pure, no I/O.
 2. Add `app/forensic/<module>/schemas.py` with the request/response models.
-3. Add `app/api/<module>.py` with the `analyze` endpoint and job dispatch.
+3. Add a module router through `app/api/analysis.py` (one POST analyze endpoint per module, shared contract).
 4. Add the module to the `module` enum on `analysis_results`.
 5. Add a frontend page under `src/pages/` and a sidebar entry in `Sidebar.tsx`.
 6. Add the module to the correlation engine's extraction switch so its indicators

@@ -1,4 +1,40 @@
-# CyberSleuth AI — Security
+# CyberSleuth AI - Security
+
+> Multimodal AI-Powered Digital Forensics & Evidence Reconstruction Platform
+
+## 0. Implementation notes (as built, 2026-11)
+
+This threat model is written against the system in this repository as it exists today.
+Deltas from the original design notes, stated plainly:
+
+1. **Tokens are stored in `localStorage`** by the frontend (see §9.1). They are
+   short-lived (30 min access / 7 day refresh), scoped to this origin only, and React
+   escapes all rendered content (no `dangerouslySetInnerHTML` anywhere) — but the
+   “never in web storage” rule is not met by this build and is called out rather than
+   hidden.
+2. **Rate limiting** is in-memory, per process (login 10/min, register 5/min, keyed by
+   IP). A shared Redis-backed limiter is the documented path for multi-replica
+   deployments.
+3. **Security headers** are set on every API response (`nosniff`, `DENY`,
+   `Referrer-Policy`, `Permissions-Policy`; HSTS when `APP_ENV=production`) and on the
+   Netlify static build (same set + immutable asset caching).
+4. **Row Level Security is enforced by the database**, not by the application: the API
+   connects as the non-superuser `cybersleuth_app` role, identical policies locally and
+   on Supabase. `INSERT … RETURNING` safety was verified by fixing the self-referencing
+   `can_access_investigation` policy (owner branch is now a direct column comparison —
+   see migration `011_investigations_returning.sql`).
+5. **Signed download URLs are not implemented.** Downloads are streamed by the API
+   after an authorisation check and carry `X-Evidence-SHA256`; behaviour is equivalent
+   to a signed URL with a 0-second TTL.
+6. **No worker sandbox/time limit** is applied to analysis (it runs in a thread of the
+   API process). Analysers are pure static reads and are tested not to mutate inputs;
+   treat that as an accepted risk, not an implemented sandbox.
+7. **No CI secret scanning is configured** yet — treat §3.3 as guidance to add it, not
+   as an existing control. The `.env` files in this working copy contain live local
+   development values; none of them are committed (`.gitignore`), and the only secrets
+   that were ever shared must be rotated as described in §11.
+
+---
 
 > Threat model, controls, and secure-development rules for the CyberSleuth AI platform.
 
@@ -91,8 +127,11 @@ A `GEMINI_API_KEY` in a `VITE_` variable is compromised the moment the page load
 
 ### 4.1 Authentication
 
-Supabase Auth issues a short-lived JWT. The backend verifies the signature against
-Supabase on every protected request. The raw token is never written to `localStorage`.
+This backend issues its own short-lived JWT pair (HS256) at login. Every protected
+request verifies the signature with `APP_SECRET_KEY`; the access token lives 30
+minutes by default, and the refresh token re-reads the profile under RLS. The raw
+token is kept in `localStorage` (see §0.1); production deployments should move to
+short-lived `httpOnly` cookies where the platform supports them.
 
 ### 4.2 Authorisation
 
@@ -265,7 +304,7 @@ These are product rules, enforced in code review, not optional preferences.
 ### 9.1 For the frontend
 
 - Only `VITE_`-prefixed variables may be referenced. No exceptions, no "just for dev".
-- Never store tokens in `localStorage` or `sessionStorage`.
+- Tokens live in `localStorage` (see §0.1); keep access tokens short-lived and never persist anything else of that kind.
 - All user-supplied text rendered in the UI is escaped by React by default; never use
   `dangerouslySetInnerHTML` on evidence-derived content.
 - Validate and sanitise file names and user input before display.
@@ -319,30 +358,44 @@ These are product rules, enforced in code review, not optional preferences.
 
 ---
 
-## 11. Current Security Posture
+## 11. Current Security Posture (as built)
 
-### Implemented in Phase 1
+### Implemented and verified
 
-- Strict TypeScript (`strict`, `noUnusedLocals`, `noImplicitAny`, `noFallthroughCasesInSwitch`).
-- Zero secrets in the frontend bundle — only public `VITE_` variables exist, and the
-  `.env` files are gitignored with placeholder-only `.env.example` files.
-- Client-side SHA-256 computation on upload (informational; the backend remains the
-  verification authority).
-- Backend-independent protected routes and guest routes.
-- No `dangerouslySetInnerHTML` anywhere in the codebase.
-- Explicit epistemic labelling in the UI — heuristic vs model vs AI explanation.
-- Honest "Demo mode" labelling so sample data is never mistaken for findings.
-- Explicit in-code prohibitions on executing uploaded APKs.
+- Argon2id password hashing; JWT access tokens (30 min) + refresh tokens (7 days);
+  refresh re-reads the profile **under RLS**.
+- **RLS enforced by PostgreSQL** on every table; the API connects as the non-superuser
+  `cybersleuth_app` role (local embedded PG and Supabase share the same policies).
+  Verified by tests: owner can read, non-member investigator and supervisor both get
+  `404`.
+- Duplicate `case_id` returns `409`; missing/expired tokens `401`; inaccessible
+  resources `404` (existence never leaked).
+- Upload pipeline: allow-list extension + content-sniffed MIME, 100 MB cap, SHA-256 at
+  intake, **re-hash after storage**, immutable-original trigger in the database.
+- Append-only, hash-chained `chain_of_custody` (trigger rejects UPDATE/DELETE +
+  INSERT-only grants) and append-only `audit_logs`, both verified by tests.
+- Rate limiting on `/api/auth/register` (5/min/IP) and `/api/auth/login` (10/min/IP),
+  per-IP keyed, `Retry-After` on 429.
+- Security headers on every API response and on the Netlify build.
+- Zero secrets in the frontend bundle; `.env*` gitignored; only `VITE_*` vars are
+  browser-visible; the Gemini key is backend-only.
+- `.env` in this working copy contains live local development values (Gemini API key,
+  database password, JWT-related material). **Rotate any value that was ever shared**
+  (screen share, repository, chat, ticket) before any real deployment. The seeded demo
+  accounts (`investigator@cybersleuth.ai`, `supervisor@cybersleuth.ai`) and the default
+  `APP_DB_PASSWORD` are development conveniences and must be rotated/removed in real
+  deployments.
+- Frontend: no `dangerouslySetInnerHTML`; epistemic labelling on every finding
+  (measured/heuristic/model); correlation UI carries the investigator-review disclaimer.
 
-### Not yet implemented (Phases 2–7) — tracked as known gaps
+### Known gaps (documented, not hidden)
 
-- Supabase Auth and RLS are **not** wired; the Phase 1 auth context is a local demo
-  implementation and is **not** a security control.
-- There is no backend, so no server-side authorisation exists yet.
-- File validation is client-side only; the server-side allowlist in
-  `docs/API.md` is Phase 3.
-- No rate limiting, audit persistence, or key rotation automation.
-- No security headers or CSP (the Nginx/Vercel config in Phase 7 will add them).
+- Tokens in `localStorage` (see §0.1).
+- In-memory per-process rate limiting only (no Redis).
+- No signed download URLs; downloads stream via the authorised API.
+- No sandboxed/timed-out analysis workers; modules run in-process threads.
+- No CI pipeline (build, tests, secret scan, `pip-audit`/`npm audit`) yet.
+- No MFA; two-factor authentication is off (§ settings page states this plainly).
+- Local embedded PostgreSQL is single-node and unencrypted at rest; use managed,
+  encrypted Postgres in production.
 
-> **Do not treat the Phase 1 build as deployable to production with real evidence.**
-> It is a complete, functional UI awaiting its backend.

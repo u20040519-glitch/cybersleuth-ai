@@ -7,7 +7,8 @@ import { useNavigate } from 'react-router-dom'
 import { Card, CardHeader } from '@/ui/Card'
 import { Button } from '@/ui/Button'
 import { TextArea } from '@/ui/Input'
-import { FileText, ChevronLeft } from 'lucide-react'
+import { FileText, ChevronLeft, AlertCircle } from 'lucide-react'
+import { investigationsAPI } from '@/services/api'
 
 const categories = [
   'Cyber Intrusion',
@@ -31,25 +32,48 @@ const priorities = [
 export function CreateInvestigationPage() {
   const navigate = useNavigate()
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     case_id: '',
     title: '',
     description: '',
     category: categories[0],
     priority: 'medium',
-    assigned_users: '',
     notes: '',
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    const caseId = formData.case_id.trim()
+    const title = formData.title.trim()
+    if (caseId.length < 2 || title.length < 2) {
+      setError('Case ID and title are required (at least 2 characters each).')
+      return
+    }
     setIsLoading(true)
-    // Phase 2: POST to /api/investigations
-    // Simulate navigation after creation
-    setTimeout(() => {
+    setError(null)
+    try {
+      const res = await investigationsAPI.create({
+        case_id: caseId,
+        title,
+        description: formData.description.trim() || undefined,
+        category: formData.category,
+        priority: formData.priority,
+        status: 'draft',
+        notes: formData.notes.trim() || undefined,
+      })
+      navigate(`/investigations/${res.data.id}`, { replace: true })
+    } catch (err: any) {
+      const detail = err?.response?.data?.detail
+      const msg =
+        typeof detail === 'string'
+          ? detail
+          : err?.response?.status === 500
+            ? 'Could not create the investigation. The Case ID must be unique.'
+            : 'The investigation could not be created. Check the fields and try again.'
+      setError(msg)
       setIsLoading(false)
-      navigate('/investigations')
-    }, 800)
+    }
   }
 
   return (
@@ -74,16 +98,18 @@ export function CreateInvestigationPage() {
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div className="space-y-2">
-              <label className="label">Case ID</label>
+              <label className="label" htmlFor="case-id">Case ID</label>
               <input
+                id="case-id"
                 type="text"
                 placeholder="e.g. CASE-2026-001"
                 className="input"
                 value={formData.case_id}
                 onChange={(e) => setFormData({ ...formData, case_id: e.target.value })}
+                required
               />
               <p className="text-xs text-text-secondary/60">
-                Unique identifier for this investigation (UUID generated on save)
+                Unique identifier for this investigation. Must not already exist.
               </p>
             </div>
             <div className="space-y-2">
@@ -103,13 +129,15 @@ export function CreateInvestigationPage() {
           </div>
 
           <div className="space-y-2">
-            <label className="label">Case Title</label>
+            <label className="label" htmlFor="case-title">Case Title</label>
             <input
+              id="case-title"
               type="text"
               placeholder="Enter investigation title"
               className="input"
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              required
             />
           </div>
 
@@ -128,8 +156,15 @@ export function CreateInvestigationPage() {
             </select>
           </div>
 
+          {error && (
+            <div className="p-3 rounded-lg bg-error/10 border border-error/20 text-sm text-error flex items-start gap-2">
+              <AlertCircle size={16} className="mt-0.5 shrink-0" />
+              {error}
+            </div>
+          )}
+
           <div className="space-y-2">
-            <label className="label">Description</label>
+            <label className="label" htmlFor="case-description">Description</label>
             <TextArea
               label=""
               placeholder="Describe the scope and objectives of this investigation..."
@@ -140,21 +175,7 @@ export function CreateInvestigationPage() {
           </div>
 
           <div className="space-y-2">
-            <label className="label">Assigned Users (email, comma-separated)</label>
-            <input
-              type="text"
-              placeholder="investigator@cybersleuth.ai, supervisor@cybersleuth.ai"
-              className="input"
-              value={formData.assigned_users}
-              onChange={(e) => setFormData({ ...formData, assigned_users: e.target.value })}
-            />
-            <p className="text-xs text-text-secondary/60">
-              Supervisors can view authorised investigations.
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <label className="label">Investigator Notes</label>
+            <label className="label" htmlFor="case-notes">Investigator Notes</label>
             <TextArea
               label=""
               placeholder="Initial case notes, observations, hypotheses..."
@@ -192,8 +213,8 @@ export function CreateInvestigationPage() {
       <div className="bg-secondary/30 border border-border/50 rounded-lg p-4">
         <h3 className="text-sm font-semibold text-text-main mb-2">How investigations work</h3>
         <ul className="text-xs text-text-secondary space-y-2 list-disc list-inside">
-          <li>Each investigation gets a unique UUID and acts as the central container for all evidence and analysis.</li>
-          <li>Evidence uploaded to the vault can be linked to one or more investigations.</li>
+          <li>Each investigation gets a unique ID and acts as the central container for its evidence and analysis.</li>
+          <li>Each evidence item is uploaded against exactly one investigation, with a SHA-256 fingerprint taken at intake.</li>
           <li>All four forensic modules (DeepTrace, SpyTrace, VoiceProof, CyberSleuth) write results to the same investigation.</li>
           <li>The Correlation Engine connects findings across modules within an investigation.</li>
         </ul>

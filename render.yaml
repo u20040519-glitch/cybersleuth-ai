@@ -1,0 +1,55 @@
+# =============================================================================
+# CYBERSLEUTH AI - Render blueprint
+# =============================================================================
+# One-click backend deployment on Render (https://render.com).
+#
+#   1. Push this repository to GitHub.
+#   2. Render  ->  New  ->  Blueprint  ->  select the repository
+#   3. Render reads render.yaml and creates the web service.
+#   4. Set the environment variables listed below in the Render dashboard
+#      (render.yaml declares the keys; secrets must be filled in by you).
+#
+# Frontend deployment is handled by Netlify separately (see netlify.toml).
+# =============================================================================
+
+services:
+  - type: web
+    name: cybersleuth-api
+    runtime: docker
+    plan: free
+    dockerfilePath: backend/Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      - key: APP_SECRET_KEY
+        generateValue: true
+      - key: APP_BASE_URL
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: DATABASE_URL
+        sync: false   # privileged URL, migrations only (e.g. Supabase Postgres)
+      - key: APP_DATABASE_URL
+        sync: false   # restricted runtime role, e.g. cybersleuth_app@...
+      - key: APP_DB_PASSWORD
+        generateValue: true
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: STORAGE_BACKEND
+        value: supabase   # or "local" with a persistent disk mounted at /srv/backend/storage
+      - key: GEMINI_API_KEY
+        sync: false   # backend only; never expose with a VITE_ prefix
+      - key: GEMINI_MODEL
+        value: gemini-3.5-flash
+      - key: SENTRY_DSN
+        sync: false

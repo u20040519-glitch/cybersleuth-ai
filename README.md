@@ -4,476 +4,183 @@
 >
 > *Detect the Threat. Decode the Evidence. Reconstruct the Truth.*
 
-CyberSleuth AI is a unified digital forensics platform for investigators to **upload, securely store, analyse, correlate, and report** digital evidence from multiple sources — images, video, audio, Android packages, and structured data artefacts.
+CyberSleuth AI is a unified digital forensics platform for investigators to **upload, securely store, analyse, correlate, and report** digital evidence from multiple sources — images, video, audio, Android packages, and structured artefacts.
 
-Four specialist forensic modules work inside **one shared investigation system**, connected by a central AI-powered correlation engine.
+Four specialist forensic modules work inside **one shared investigation system**, connected by a correlation engine that links genuine shared indicators (hashes, URLs, IPs, emails and identical timestamps) across artefacts.
 
-| Module | Purpose |
-|---|---|
-| **DeepTrace AI** | Image & video forensics — metadata, frame extraction, manipulation checks |
-| **SpyTrace AI** | Android spyware & mobile artefact analysis — APK static analysis, permissions, components |
-| **VoiceProof AI** | Audio & synthetic voice forensics — waveform, spectrogram, anomaly detection |
-| **CyberSleuth AI** | Digital evidence extraction — timestamps, entities, timeline, relationship graph |
-
----
-
-## 📌 Project Status
-
-| Phase | Scope | Status |
-|---|---|---|
-| **Phase 1** | Foundation & UI (frontend, design system, navigation, all pages) | ✅ **Complete** |
-| Phase 2 | Supabase — schema, auth, RLS, storage, CRUD | ⬜ Not started |
-| Phase 3 | Evidence integrity — validation, SHA-256, chain of custody | ⬜ Not started |
-| Phase 4 | Forensic modules — OpenCV / Androguard / Librosa / spaCy | ⬜ Not started |
-| Phase 5 | AI correlation — timeline, graph, Gemini explanation layer | ⬜ Not started |
-| Phase 6 | Reports — PDF generation | ⬜ Not started |
-| Phase 7 | Testing, security, deployment | ⬜ Not started |
-
-> **Current build is a complete, navigable frontend.** Backend calls are wired to a
-> prepared Axios service layer and will activate when the Phase 2 backend is running.
-> Pages that need live data show an honest **"Demo mode"** empty state rather than
-> fabricated forensic findings.
-
-See [`DEVELOPMENT_STATUS.md`](./DEVELOPMENT_STATUS.md) for the detailed breakdown.
+| Module | Purpose | Engine |
+| --- | --- | --- |
+| **DeepTrace AI** | Image forensics | OpenCV + Pillow — EXIF, Error Level Analysis, noise residuals, copy-move detection, 8×8 grid analysis |
+| **SpyTrace AI** | Android package forensics | Androguard — manifest, permissions, signing certificate, exported components, embedded network endpoints |
+| **VoiceProof AI** | Audio forensics | Librosa — segment/silence structure, splice-seam heuristics, level statistics |
+| **CyberSleuth AI** | Artefact extraction | spaCy NER + regex — timestamps, entities, emails, URLs, IPs, hashes, chat-export structure |
 
 ---
 
-## 🎯 Problem Statement
+## Why it looks like a real platform
 
-Digital investigations today are fragmented across single-purpose tools: one app for
-image forensics, another for APK inspection, another for audio, another for log parsing.
-Evidence lives in scattered folders, and correlating a suspicious video with a chat
-export or an APK requires manual cross-referencing in spreadsheets.
+Everything this repository ships is wired to **real systems, not placeholders** — and the repository seeds a complete, worked case so the app demonstrates itself honestly:
 
-This fragmentation causes three concrete failures:
+- **Real database.** Migrations build a proper PostgreSQL schema (11 tables, RLS on every table, restricted application role). Local development uses a portable embedded PostgreSQL; no account is required.
+- **Real forensic pipeline.** The seeded case (Operation Silent Whisper) was analysed by the actual modules: EXIF findings from a real JPEG, segment analysis of a synthesised WAV, a full static analysis of a real F-Droid APK, and entity extraction from a real chat export.
+- **Real integrity chain.** SHA-256 fingerprints at intake, re-hash verification of stored originals, and an append-only, hash-chained chain of custody — the report embeds the real manifest.
+- **Real AI explanation.** Correlation findings are explained by Google Gemini, grounded strictly in the structured findings (never inventing relationships).
+- **Real browser-verified UI.** Login → dashboard → investigation → analysis → correlation → report — all verified end-to-end in Chromium with zero console errors.
 
-1. **No unified timeline** — findings from different tools cannot be placed on a single chronology.
-2. **Broken chain of custody** — files are copied between tools, weakening evidentiary integrity.
-3. **No explainable reasoning** — automated outputs are treated as conclusions rather than hypotheses.
-
----
-
-## 🎯 Objectives
-
-1. Provide **one investigation container** for all evidence and all module outputs.
-2. Guarantee **evidence integrity** via SHA-256 hashing and an immutable chain-of-custody trail.
-3. **Correlate findings across modalities** into a single evidence-linked timeline and relationship graph.
-4. Keep **technical observations, model predictions, AI explanations, and human hypotheses clearly separated**.
-5. Never present an automated result as legal proof, and never infer identity or guilt from timestamps alone.
+![Dashboard](docs/screenshots/dashboard.png)
+![Investigation](docs/screenshots/investigation-detail.png)
+![Correlation](docs/screenshots/correlation.png)
 
 ---
 
-## 🧩 Features
+## Quick start (local, zero-config)
 
-### Foundation & UI (Phase 1 — implemented)
+**Prerequisites:** Node.js 18+, Python 3.10+ (3.10/3.11 recommended), Git.
 
-- **Dark cyber-forensics design system** — exact palette (`#080D18` background, `#0B1220` sidebar, `#111B2B` cards, `#3B82F6` primary blue, `#22D3EE` cyan, `#E6F0FF` text), glass panels, subtle glow shadows, custom scrollbars.
-- **Persistent sidebar** with all 11 navigation destinations plus a contextual top bar.
-- **Responsive** layout across desktop, tablet, and mobile.
-- **Protected routes** and a **guest-only** auth flow.
-- **Auth screens** — sign in and registration with client-side validation.
-- **Reusable component library** — Button (with `asChild`), Card, StatCard, Badge, Input, TextArea, EmptyState, LoadingSpinner.
-- **Working interactions** — evidence type filter, investigation status filter, search, file selection with **client-side SHA-256 hashing**, analysis run states, report generation, logout.
-- **Honest states** — every module page distinguishes *"Model not configured / analysis unavailable"* from actual findings, and labels demo content explicitly.
-
-### Planned (Phases 2–7)
-
-- Supabase Auth with Investigator / Supervisor roles, RLS policies, private storage buckets.
-- Evidence upload with server-side validation, SHA-256 verification before and after processing, immutable chain-of-custody events, audit logging.
-- Real forensic engines: OpenCV frame extraction, Androguard APK parsing, Librosa waveform/spectrogram, spaCy + NetworkX entity and graph extraction.
-- Gemini explanation layer grounded strictly in structured findings.
-- Professional PDF forensic reports distinguishing observations from interpretations.
-
----
-
-## 🛠 Technology Stack
-
-### Frontend
-| Technology | Purpose |
-|---|---|
-| React 18 | UI runtime |
-| TypeScript 5.5 | Type safety (strict mode) |
-| Vite 5 | Dev server & build |
-| Tailwind CSS 3.4 | Design system |
-| shadcn/ui patterns (`@radix-ui/react-slot`) | Composable components |
-| Lucide React | Iconography |
-| React Router 6 | Routing & route guards |
-| TanStack Query / Recharts | Data fetching & charts (installed, Phase 2 wiring) |
-| Axios | HTTP client |
-
-### Backend (Phase 2+)
-Python · FastAPI · Pydantic · Uvicorn · background workers
-
-### Data & Auth
-Supabase Auth · Supabase PostgreSQL · Supabase private Storage · Row Level Security
-
-### AI & Forensics
-Google Gemini (backend only) · PyTorch · OpenCV · Librosa · scikit-learn · spaCy · NetworkX · Androguard
-
-### Deployment
-Vercel / Netlify (frontend) · Render / Railway (backend) · Supabase (database + storage) · GitHub (source)
-
----
-
-## 🏗 System Architecture
-
-```
-┌──────────────────────────────────────────────────────────────────────┐
-│                         FRONTEND (Netlify)                            │
-│  React + TypeScript + Vite + Tailwind   │   React Router guards      │
-│  ─────────────────────────────────────────┼─────────────────────────  │
-│  Dashboard │ Investigations │ Evidence   │ 4 Forensic Modules        │
-│  Correlation Engine │ Reports │ Audit    │ Settings                  │
-└───────────────────────────────────┬──────────────────────────────────┘
-                                    │  Axios (Bearer token, HTTPS)
-                                    ▼
-┌──────────────────────────────────────────────────────────────────────┐
-│                        BACKEND (Render / Railway)                    │
-│  FastAPI  ──  auth verification  ──  RBAC authorisation              │
-│    ├── evidence router    (upload, hash, integrity, chain of custody) │
-│    ├── forensics routers  (deeptrace / spytrace / voiceproof /        │
-│    │                        cybersleuth) — background job dispatch   │
-│    ├── correlation router (entity extraction, timeline, graph)        │
-│    ├── reports router     (PDF generation)                           │
-│    └── audit router       (immutable event log)                      │
-│                                     │                                │
-│                    ┌────────────────┴────────────────┐               │
-│                    ▼                                 ▼               │
-│         ┌────────────────────┐          ┌──────────────────┐        │
-│         │  Gemini API        │          │ Forensic Engines │        │
-│         │  (explanations     │          │ OpenCV / Andro-  │        │
-│         │   ONLY, grounded)  │          │ guard / Librosa  │        │
-│         └────────────────────┘          └──────────────────┘        │
-└──────────┬──────────────────────────────────────┬──────────────────┘
-           │                                      │
-           ▼                                      ▼
-┌────────────────────────────┐      ┌─────────────────────────────────┐
-│  SUPABASE POSTGRESQL       │      │  SUPABASE STORAGE (private)      │
-│  profiles, investigations, │      │  evidence originals (immutable) │
-│  evidence, analysis_results│      │  processed artefacts, thumbnails│
-│  chain_of_custody,         │      └─────────────────────────────────┘
-│  correlation_results,      │
-│  audit_logs, reports       │◀──── RLS on every table
-└────────────────────────────┘
-```
-
-Full detail: [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md)
-
----
-
-## 🗄 Database Architecture
-
-Eleven tables, all UUID primary keys, all foreign-keyed, all RLS-protected.
-
-| Table | Purpose |
-|---|---|
-| `profiles` | User profile + role (`investigator` / `supervisor`) |
-| `investigations` | Central case container (UUID, case ID, category, priority, status) |
-| `investigation_members` | Many-to-many authorised access per investigation |
-| `evidence` | File metadata, SHA-256 hash, storage path, uploader, investigation link |
-| `analysis_results` | Structured per-module output with status + confidence |
-| `evidence_events` | Per-evidence event stream (access, process, export) |
-| `forensic_timelines` | Normalised timeline events with source evidence reference |
-| `chain_of_custody` | Append-only custody event ledger |
-| `generated_reports` | Report metadata and PDF pointer |
-| `audit_logs` | Immutable user/system action log |
-| `correlation_results` | Evidence-linked correlation with verification status |
-
----
-
-## 🚀 Installation
-
-### Prerequisites
-
-- **Node.js 18+** and npm
-- **Python 3.10+** (Phase 2 backend)
-- **Git**
-- **VS Code** (recommended)
-- A free **Supabase** project (Phase 2)
-
-### Step 1 — Clone and open in VS Code
-
-```bash
-cd C:\Users\ABHISHEK\Documents\NewProject
-code .
-```
-
-### Step 2 — Frontend setup
-
-```bash
-cd frontend
-npm install
-```
-
-### Step 3 — Environment configuration
-
-```bash
-cd frontend
-copy .env.example .env
-```
-
-Open `frontend/.env` and fill in your values:
-
-```env
-VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
-VITE_API_BASE_URL=http://localhost:8000/api
-```
-
-> **Never commit `.env`.** It is already listed in `.gitignore`.
-> The Gemini key and Supabase **service role** key belong in the **backend** `.env` only —
-> they must never appear in any `VITE_` variable, because Vite inlines `VITE_*` into
-> the JavaScript bundle shipped to the browser.
-
-### Step 4 — Run the development server
-
-```bash
-cd frontend
-npm run dev
-```
-
-Open **http://localhost:3000**.
-
-> If port 3000 is already in use, Vite automatically selects the next free port
-> (e.g. `http://localhost:3001`) and prints the URL in the terminal.
-
-### Step 4b — Share the project with someone else
-
-**Instant public link (no account needed)** — from the desktop `Um_Cyber` folder,
-double-click `start-share-link.cmd`. It starts the dev server and opens a Cloudflare
-quick tunnel, printing a public URL.
-
-```bash
-# manual equivalent
-cd frontend && npm run dev -- --host
-"%USERPROFILE%\Tools\cloudflared.exe" tunnel --url http://localhost:3000 --no-autoupdate
-```
-
-Send the `https://<random>.trycloudflare.com` URL to anyone. Quick-tunnel URLs change
-on every restart, so for a permanent link deploy the frontend to Netlify (see
-[Deployment](#-deployment)).
-
-> Vite's `server.allowedHosts` in `frontend/vite.config.ts` permits `.trycloudflare.com`
-> and `.loca.lt` so tunnels are not rejected by the DNS-rebinding guard. Remove those
-> entries if you never expose the dev server publicly.
-
-### Step 5 — Demo sign-in
-
-Phase 1 runs in a local demo auth mode so you can explore every screen immediately:
-
-| Role | Email | Password |
-|---|---|---|
-| Investigator | `investigator@cybersleuth.ai` | `password123` |
-| Supervisor | `supervisor@cybersleuth.ai` | `password123` |
-
-Phase 2 replaces this with real Supabase Auth.
-
-### Other frontend commands
-
-```bash
-npm run build     # Type-check + production build to dist/
-npm run preview   # Serve the production build locally
-npm run lint      # ESLint
-```
-
-### Step 6 — Backend setup (Phase 2, not yet implemented)
+### 1. Backend
 
 ```bash
 cd backend
 python -m venv .venv
-.venv\Scripts\Activate.ps1     # Windows PowerShell
+.venv\Scripts\Activate.ps1          # Windows
+# source .venv/bin/activate         # macOS / Linux
 pip install -r requirements.txt
-copy .env.example .env          # add SUPABASE_*, GEMINI_API_KEY locally
-uvicorn app.main:app --reload   # http://localhost:8000
+python -m spacy download en_core_web_sm
 ```
 
-API docs will be at **http://localhost:8000/docs**.
-
----
-
-## 📡 API Documentation
-
-The full endpoint contract — request schemas, response schemas, status codes, error
-format, and background-job polling — is in [`docs/API.md`](./docs/API.md).
-
-Planned surface (Phase 2+):
-
-| Method | Endpoint | Purpose |
-|---|---|---|
-| `GET` | `/api/health` | Service health |
-| `GET` | `/api/auth/me` | Current user profile + role |
-| `GET` `POST` | `/api/investigations` | List / create investigations |
-| `GET` `PUT` | `/api/investigations/{id}` | Read / update investigation |
-| `POST` | `/api/evidence/upload` | Secure upload + hash + custody event |
-| `GET` | `/api/evidence/{id}` | Evidence metadata |
-| `POST` | `/api/evidence/{id}/integrity-check` | Re-verify SHA-256 |
-| `POST` | `/api/deeptrace/analyze` | Image / video analysis (background job) |
-| `POST` | `/api/spytrace/analyze` | APK static analysis (background job) |
-| `POST` | `/api/voiceproof/analyze` | Audio analysis (background job) |
-| `POST` | `/api/cybersleuth/analyze` | Artefact extraction + timeline (background job) |
-| `POST` `GET` | `/api/correlation/{investigation_id}` | Run / fetch correlation |
-| `POST` | `/api/reports/{investigation_id}` | Generate PDF report |
-| `GET` | `/api/reports/{id}` | Fetch report metadata / PDF |
-
----
-
-## 🧪 Testing
-
-**Phase 1 verification (completed):**
-
-| Check | Command | Result |
-|---|---|---|
-| TypeScript strict type-check | `npx tsc --noEmit` | ✅ 0 errors |
-| Production build | `npm run build` | ✅ success (1608 modules, 389.82 kB JS / 117.75 kB gzip) |
-| Route render sweep (14 routes) | browser automation | ✅ all render, correct headings |
-| Console error sweep | browser automation | ✅ 0 errors |
-| Navigation (11 sidebar items) | browser automation | ✅ all present on every route |
-| Auth flow (login → dashboard → logout) | browser automation | ✅ works |
-| Correlation workflow | browser automation | ✅ timeline + connections + graph render |
-| Report generation workflow | browser automation | ✅ generates report ID + download button |
-
-**Phase 2+ test plan** (per the project specification):
-
-- Authentication and session handling
-- Role-based access control (Investigator vs Supervisor)
-- Investigation creation and validation
-- Evidence upload validation (type, size, filename sanitisation)
-- SHA-256 calculation and integrity verification
-- Metadata extraction per file class
-- Each forensic module
-- Correlation logic and entity extraction
-- Report generation
-- API error handling and authorisation failures
-
----
-
-## 🔐 Security Considerations
-
-Full detail: [`docs/SECURITY.md`](./docs/SECURITY.md).
-
-Implemented in Phase 1:
-
-- **No secrets in the frontend.** Only `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are browser-visible. The Gemini key and Supabase service-role key are backend-only by design.
-- **Strict TypeScript** with `noUnusedLocals`, `noImplicitAny`, and `noFallthroughCasesInSwitch`.
-- **Client-side SHA-256** pre-computation on upload (informational; the backend remains the authority).
-- **Never trust the client.** All authorisation decisions in Phases 2+ are enforced server-side and in the database via RLS — hiding a button is never the access control.
-
-Required in Phases 2+ (deliberately **not** implemented in a frontend-only build):
-
-- Supabase Auth with token verification on every backend request.
-- Row Level Security on all eleven tables.
-- Private storage buckets with signed, short-lived URLs.
-- Service-role usage that explicitly re-checks the caller's authorisation, because the service role bypasses RLS.
-- CORS restricted to configured frontend origins.
-- Audit logging of every evidence access, process, and export.
-- No execution of uploaded files; APK analysis is strictly static.
-
----
-
-## 🌐 Deployment
-
-### Frontend → Netlify
-
-The repo root contains a ready `netlify.toml`, so **no manual build settings are
-needed**.
-
-1. Push the repo to GitHub.
-2. Netlify → **Add new site** → **Import an existing project** → connect the repo.
-3. Netlify reads `netlify.toml` and auto-configures:
-
-   | Setting | Value |
-   |---|---|
-   | Base directory | `frontend` |
-   | Build command | `npm run build` |
-   | Publish directory | `dist` |
-   | Node version | `18` |
-
-4. **Site configuration → Environment variables → Add** the public variables:
-
-   ```
-   VITE_SUPABASE_URL      = https://<project>.supabase.co
-   VITE_SUPABASE_ANON_KEY = <supabase anon key>
-   VITE_API_BASE_URL      = https://<your-backend>/api
-   ```
-
-5. **Deploy site.** You get a permanent URL: `https://<your-site>.netlify.app`.
-
-> **Only `VITE_` variables are public.** Never put `GEMINI_API_KEY` or
-> `SUPABASE_SERVICE_ROLE_KEY` here — they belong in the backend's environment.
-
-**Why SPA routing is configured:** React Router serves routes like `/deeptrace` and
-`/investigations/<uuid>` client-side. The `[[redirects]]` block in `netlify.toml` plus
-`frontend/public/_redirects` both rewrite unknown paths to `/index.html`, so a direct
-link or a page refresh never 404s. Verified locally against the production build.
-
-**Deploy without GitHub (quick preview):**
+### 2. Frontend
 
 ```bash
-npm i -g netlify-cli
-cd C:\Users\ABHISHEK\Documents\NewProject
-netlify deploy --prod --dir frontend/dist
-netlify deploy --prod --dir frontend/dist --alias cybersleuth-ai
+cd frontend
+npm install
+npm run dev                         # http://localhost:3000
 ```
 
-### Backend → Render / Railway (Phase 2)
+### 3. Run the API (separate terminal)
+
+```bash
+cd backend
+..\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+On first start the API creates an embedded PostgreSQL under `backend/.pgdata`, applies all migrations, provisions the restricted `cybersleuth_app` role and serves on **http://127.0.0.1:8000** (docs at `/docs`).
+
+### 4. Sign in with the seeded accounts
+
+| Role | Email | Password |
+| --- | --- | --- |
+| Investigator | `investigator@cybersleuth.ai` | `Investigator!2026` |
+| Supervisor | `supervisor@cybersleuth.ai` | `Supervisor!2026` |
+
+> These are **seeded local-demo accounts** created by the seed script below. They exist so you can explore the full workflow immediately. Rotate or remove them in any real deployment.
+
+### 5. (Re)seed the realistic case
+
+```bash
+python scripts/seed_demo_data.py
+```
+
+Idempotent. It creates the two demo accounts, the **Operation Silent Whisper** case (CASE-2026-0147) with five real evidence items (a screen photo with EXIF, a call recording, a genuine F-Droid APK, a chat export and investigator notes), runs every forensic module on them, executes the correlation pass, and renders the PDF report.
+
+> **Note on the seeded evidence:** the image, audio and chat artefacts were synthesised so the repository contains no real personal data; the APK is the publicly distributed, open-source F-Droid Basic package used purely as a sample. The hashes, analyses, custody events, correlations and the PDF are all produced by the platform itself.
+
+---
+
+## Testing
+
+```bash
+cd backend
+..\.venv\Scripts\python.exe -m pytest -q
+```
+
+**41 tests** against a dedicated `cybersleuth_test` database: auth (register/login/refresh/429 rate limiting), RBAC and RLS-backed access control, duplicate-case 409 handling, evidence upload + SHA-256 verification + chain-of-custody validation, DeepTrace/CyberSleuth endpoints, correlation engine unit tests, PDF report generation and download.
+
+Frontend verification: TypeScript strict `tsc --noEmit` + production build + a Chromium end-to-end smoke run (login, dashboard data, deeptrace run, reports, audit logs) with **zero console errors**.
+
+---
+
+## Deployment
+
+| Piece | Target | How |
+| --- | --- | --- |
+| Frontend (SPA) | **Netlify** | Connect the repo; `netlify.toml` already configures base `frontend`, `npm run build`, publish `dist`, SPA fallback and security headers. Set `VITE_API_BASE_URL=https://<backend>/api` in the Netlify env. |
+| Backend (API) | **Render** (or Railway) | `render.yaml` blueprint included. Build context is the repo root: `docker build -t cybersleuth-api -f backend/Dockerfile .` |
+| Database / Auth / Storage / RLS | **Supabase** (or any Postgres) | Apply `supabase/migrations/*.sql` in order (e.g. `supabase db push`). The same files run locally against the embedded server — one schema, both environments. Create the three private buckets (`evidence-originals`, `evidence-derived`, `reports`) — migration 009 does this on Supabase. |
+
+### Environment variables
+
+Backend (`backend/.env`, never committed):
+
+| Variable | Purpose |
+| --- | --- |
+| `APP_SECRET_KEY` | Session signing (≥32 chars) |
+| `DATABASE_URL` | Privileged URL for migrations **only** (e.g. Supabase Postgres). Leave unset locally to use the embedded server. |
+| `APP_DATABASE_URL` | Restricted runtime connection (role `cybersleuth_app`). Leave unset locally to auto-provision. |
+| `APP_DB_USER` / `APP_DB_PASSWORD` | Restricted role name/password used by migrations to provision |
+| `GEMINI_API_KEY` / `GEMINI_MODEL` | AI explanation layer (backend only; default model `gemini-3.5-flash`) |
+| `SUPABASE_URL` / `SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY` | Supabase project (optional locally) |
+| `STORAGE_BACKEND` | `local` (default) or `supabase` |
+| `CORS_ORIGINS` | Comma-separated allowed origins |
+
+Frontend: **only** `VITE_*` variables are public. `GEMINI_API_KEY` and any service-role key must never be given a `VITE_` prefix.
+
+---
+
+## Security model
+
+- **Argon2id** password hashing; short-lived JWT access tokens + refresh tokens (refresh re-reads the profile under RLS).
+- **Row Level Security** on every table, enforced by PostgreSQL itself — the API connects as the non-superuser `cybersleuth_app` role, so even a bug in application code cannot read another case's rows. Local and Supabase environments run identical policies.
+- **Immutable originals** — the database refuses changes to `sha256_hash`, `storage_path`, `original_filename` and `file_size`; the originals bucket has no UPDATE policy.
+- **Append-only, hash-chained custody ledger** — `chain_of_custody` rejects UPDATE/DELETE; each event hashes the previous one.
+- **Append-only audit log** — INSERT-only policy, no UPDATE/DELETE, verified by tests.
+- **Rate limiting** on auth endpoints (per-IP, in-memory; swap for Redis in multi-replica deployments) and **security headers** on every response.
+- **Integrity** — SHA-256 re-verified after every stored upload; `/evidence/{id}/integrity-check` re-checks on demand; the custody chain is verifiable via `/evidence/{id}/custody/verify`.
+
+See [`docs/SECURITY.md`](docs/SECURITY.md) for the full threat model and deployment checklist.
+
+---
+
+## Known limitations (honest)
+
+1. **No calibrated forensic models** ship in the box. DeepTrace/SpyTrace/VoiceProof produce measured heuristics and label every finding as `measured`/`heuristic`/`model`; `confidence_score` is only reported when a model produces it (none currently). Nothing is presented as a verdict.
+2. **The Gemini explanation layer** requires `GEMINI_API_KEY`; without it the correlation runs but reports `available: false` with a reason instead of fabricating prose.
+3. **The seeded demo accounts must be removed or rotated** in any real deployment; the default `APP_DB_PASSWORD` is a development value.
+4. **Rate limiting** is in-memory per process — use Redis for multi-replica deployments.
+5. **SPA-only browser hardening** is set by the API/Netlify headers; the frontend itself ships no third-party scripts.
+6. The **embedded PostgreSQL** is for single-machine development; production should use managed Postgres (Supabase recommended) — the same migrations apply.
+
+---
+
+## Project structure
 
 ```
-uvicorn app.main:app --host 0.0.0.0 --port $PORT
+├── frontend/               # React 18 + TypeScript + Vite + Tailwind
+│   ├── src/pages/          # 16 pages (dashboard, modules, correlation, reports…)
+│   ├── src/components/     # Layout, UI kit, shared ModuleAnalysisPage
+│   ├── src/services/api.ts # Typed API client (JWT + refresh-on-401)
+│   └── src/context/        # AuthContext backed by the live backend
+├── backend/                # FastAPI + SQLAlchemy 2 + asyncpg
+│   ├── app/api/            # auth, investigations, evidence, analysis (×4), correlation, reports, audit, dashboard
+│   ├── app/forensic/       # deeptrace, spytrace, voiceproof, cybersleuth analyzers (base contract in base.py)
+│   ├── app/correlation/    # deterministic entity/timestamp correlation engine + Gemini explanation
+│   ├── app/reports/        # reportlab PDF renderer
+│   ├── app/database/       # local embedded PG bootstrap, migration runner, RLS provisioner
+│   └── tests/              # 41 pytest tests (auth, RBAC, evidence, forensics, reports, health)
+├── supabase/migrations/    # 12 SQL migrations — source of truth for the schema (local + Supabase)
+├── scripts/seed_demo_data.py
+├── docs/                   # ARCHITECTURE, API, SECURITY, screenshots
+└── netlify.toml / render.yaml / backend/Dockerfile
 ```
 
-Set `SUPABASE_*`, `GEMINI_API_KEY`, `GEMINI_MODEL`, and `FRONTEND_URL` (your Netlify
-URL, for CORS) in the platform's environment settings.
-
-### Database, Auth & Storage → Supabase
-
-Apply the migrations from `supabase/migrations/`, enable RLS, and create the private
-buckets `evidence-originals`, `evidence-derived`, `reports`.
-
----
-
-## ⚠️ Known Limitations
-
-These are honest, current constraints — not placeholders for something that "works":
-
-1. **No backend yet.** All analysis actions in Phase 1 return clearly-labelled sample payloads to demonstrate the UI contract. They are **not** real forensic findings.
-2. **No real forensic models.** Deepfake detection, synthetic voice detection, and spyware classification are not implemented — no calibrated model is bundled. The UI states this explicitly and distinguishes heuristics from model predictions.
-3. **No database.** Investigations and evidence lists are empty until Phase 2. Pages show a "Demo mode" empty state rather than invented data.
-4. **No PDF generation.** The report flow is UI-only; the backend renderer arrives in Phase 6.
-5. **Demo authentication.** Credentials are validated client-side in Phase 1 and are not a security control.
-6. **No deleted-evidence reconstruction.** Deliberately not implemented — reconstruction is only attempted when genuine recoverable source artefacts exist.
-
----
-
-## 🚀 Future Scope
-
-- **Phase 2–7** as listed in the project status table.
-- Additional modules: network traffic analysis, memory forensics, disk image carving, blockchain transaction tracing.
-- Collaborative investigation with supervisor annotation and finding approval workflows.
-- Cross-case search and a global evidence index with provenance tracking.
-- Signed evidence manifests and exportable court bundles.
-- On-device model inference for air-gapped deployments.
-
----
-
-## 📄 License
-
-MIT — see [`LICENSE`](./LICENSE).
-
----
-
-## 📚 Documentation Index
+## Documentation
 
 | Document | Contents |
-|---|---|
-| [`DEVELOPMENT_STATUS.md`](./DEVELOPMENT_STATUS.md) | Phase-by-phase status and test results |
-| [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) | System, database, and module design |
-| [`docs/API.md`](./docs/API.md) | Endpoint contract and schemas |
-| [`docs/SECURITY.md`](./docs/SECURITY.md) | Threat model, controls, and secure development rules |
+| --- | --- |
+| [`DEVELOPMENT_STATUS.md`](DEVELOPMENT_STATUS.md) | Phase-by-phase status with verification evidence |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | System, database and module design |
+| [`docs/API.md`](docs/API.md) | Endpoint reference |
+| [`docs/SECURITY.md`](docs/SECURITY.md) | Threat model and hardening checklist |
 
----
+## License
 
-<p align="center">
-  <b>CyberSleuth AI</b><br>
-  <i>Detect the Threat. Decode the Evidence. Reconstruct the Truth.</i><br><br>
-  Built with React · TypeScript · Tailwind CSS · FastAPI · Supabase · Gemini
-</p>
+MIT — see [`LICENSE`](LICENSE).
