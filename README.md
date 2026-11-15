@@ -86,6 +86,47 @@ Idempotent. It creates the two demo accounts, the **Operation Silent Whisper** c
 
 ---
 
+## VS Code Dev container (Ubuntu 22.04)
+
+The whole stack can run inside a **Linux (Ubuntu) container** opened in VS Code — no local Python/Node setup, and the forensic system libraries are already installed.
+
+| File | Purpose |
+| --- | --- |
+| `.devcontainer/devcontainer.json` | Container definition, forwarded ports (3000 / 8000), extensions, Python interpreter |
+| `.devcontainer/Dockerfile` | Ubuntu 22.04 + Python 3.10 + Node 20 + `libsndfile1` / `libglib2.0-0` / `ffmpeg` for the forensic stack |
+| `.devcontainer/post-create.sh` | One-time bootstrap (pip deps, spaCy model, `npm ci`) |
+| `.devcontainer/post-start.sh` | Banner with the forwarded URLs |
+
+**Open it:** VS Code → `Ctrl+Shift+P` → **Dev Containers: Reopen in Container** (or *Open in Container*). The first build takes a few minutes; afterwards the layer cache makes rebuilds instant.
+
+Inside the container:
+
+```bash
+# Task "CyberSleuth: start full stack" does both at once (API + UI)
+python3.10 -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload   # in backend/
+npm run dev                                                               # in frontend/
+```
+
+- Frontend → <http://localhost:3000> (the Vite proxy forwards `/api` to the API inside the container)
+- API docs → <http://localhost:8000/docs>
+
+The embedded PostgreSQL (`pgserver`) is provisioned automatically on first API start under `backend/.pgdata`, so the container is self-contained — no database server required.
+
+**One-click tasks** (`Ctrl+Shift+P` → *Tasks: Run Task*):
+
+| Task | Does |
+| --- | --- |
+| `CyberSleuth: start full stack` | API on 8000 + Vite on 3000, in parallel |
+| `CyberSleuth: start API` / `CyberSleuth: start frontend` | One side only |
+| `CyberSleuth: run backend tests` | `pytest -q` against the isolated test database |
+| `CyberSleuth: typecheck frontend` | `tsc --noEmit` |
+| `CyberSleuth: seed demo data` | Re-creates the seeded case (idempotent) |
+| `CyberSleuth: debug API` | Debug configuration for the FastAPI app (F5) |
+
+> The devcontainer is optional — the native Windows/macOS/Linux quick start below works exactly the same.
+
+---
+
 ## Testing
 
 ```bash
