@@ -30,5 +30,9 @@ export default defineConfig({
   preview: {
     port: 4173,
     allowedHosts: ['.trycloudflare.com', '.loca.lt', 'localhost'],
+    proxy: {
+      // Same IPv4-loopback rule as the dev proxy: the backend binds 127.0.0.1.
+      '/api': 'http://127.0.0.1:8000',
+    },
   },
 })
