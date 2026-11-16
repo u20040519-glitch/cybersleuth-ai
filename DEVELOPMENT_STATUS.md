@@ -127,6 +127,28 @@
   after 10 s on a cold start, leaves the server running and leaves pgserver
   with an empty handle (`assert self._postmaster_info is not None`). The
   startup now retries and re-attaches to the running server.
+- **“Analysis failed” on every package that carries a NUL byte.** Running
+  SpyTrace on the seeded APK reported a failure although the module had
+  finished its work (risk score 7, 13 findings, 69 URLs). The package carries
+  `http://ns.adobe.com/xap/1.0/\u0000` in its DEX string table; the finding
+  reached `analysis_results.result_data` (a JSONB column) and PostgreSQL
+  refused it:
+
+  ```
+  unsupported Unicode escape sequence
+  DETAIL:  \u0000 cannot be converted to text
+  ```
+
+  PostgreSQL cannot hold a NUL byte inside a text value.
+  `app/services/sanitize.py` now removes those characters from a result
+  structure before it is written — for every module — and the SpyTrace
+  module cleans the strings it extracts. All four modules now complete on
+  the seeded evidence.
+- **A quick tunnel can die without the process noticing.** Cloudflare dropped
+  the tunnel with *“Unauthorized: Tunnel not found”* while cloudflared kept
+  running and kept retrying the registration of a tunnel that no longer
+  existed — the process was alive, but nothing was served. The supervisor
+  probes the address now and replaces a tunnel that stops answering.
 - **The login page blamed the password for every failure.** A request that
   never reached the API — the demo backend lives behind a tunnel whose
   address changes — was reported as *“Invalid email or password”*, and so was
@@ -153,12 +175,13 @@
 
 | Check | Result |
 | --- | --- |
-| `pytest -q` (backend) | **41 passed** |
+| `pytest -q` (backend) | **48 passed** |
 | `npm run build` (frontend) | ✅ built (788 kB JS / 230 kB gzip) + `404.html` |
 | Browser smoke (headless Chrome, Pages build) | **PASS** — page loaded · API online · sign in · `/dashboard` · token stored |
 | Browser smoke (headless Chrome, tunneled demo) | **PASS** — same flow |
 | Browser smoke with a **dead** API address first | **PASS** — the app fell through to the next candidate |
 | Browser smoke with **no** reachable API | the login is refused and the page says *“API unreachable”* and *“The API answered 405 … does not point at the CyberSleuth API”* — never *“Invalid email or password”* |
+| The four forensic modules on the seeded evidence | deeptrace · voiceproof · spytrace · cybersleuth — all **completed** (spytrace: risk 7, 13 findings, 69 URLs) |
 | `GET /api/health` (local + tunnel) | `{"status":"ok","database":"ok","storage":"ok",...}` |
 | Pages build | `200`, assets `200`, `runtime-config.js` points at the live API |
 | Cross-origin login from the Pages origin | `200` — CORS preflight answered by the API (`Access-Control-Allow-Origin`) |
