@@ -163,8 +163,7 @@ backend/storage/
 *.apks
 
 # Vite config timestamp artefacts (generated on every dev-server reload)
-vite.config.js.timestamp-*.mjs
-vite.config.mjs.timestamp-*.mjs
+vite.config.js.timestamp-*.mjsvite.config.mjs.timestamp-*.mjs
 vite.config.cjs.timestamp-*.mjs
 vite.config.ts.timestamp-*.mjs
 vite.config.mts.timestamp-*.mjs
@@ -186,3 +185,9 @@ scratch-evidence/
 
 # Local Netlify folder
 .netlify
+
+# TypeScript build artefacts (tsc -b emits these next to the sources)
+*.tsbuildinfo
+frontend/vite.config.js
+frontend/vite.config.d.ts
+frontend/tsconfig.node.tsbuildinfo

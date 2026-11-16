@@ -16,6 +16,12 @@
       rel="stylesheet"
     />
     <title>CyberSleuth AI — Digital Forensics Platform</title>
+    <!--
+      Runtime configuration. This file is NOT bundled: it is served as-is, so
+      the API location can be changed without rebuilding the app (a tunnel URL
+      changes every time the backend is restarted).
+    -->
+    <script src="/runtime-config.js"></script>
   </head>
   <body>
     <div id="root"></div>

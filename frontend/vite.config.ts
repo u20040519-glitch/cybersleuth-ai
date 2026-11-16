@@ -4,8 +4,28 @@ import path from 'path'
 
 const srcPath = path.resolve(__dirname, './src')
 
+// The app is served from the root on Netlify and from a sub-path on GitHub
+// Pages (https://<owner>.github.io/<repo>/). VITE_BASE_PATH tells Vite where
+// the bundle lives; the React Router basename and the asset URLs are derived
+// from it, so one build works on every host.
+const base = process.env.VITE_BASE_PATH || '/'
+
+// Vite blocks unknown Host headers by default (DNS-rebinding protection).
+// The leading '.' allows every subdomain of the listed domain, which is
+// required for public tunnels: Cloudflare quick tunnels
+// (random <name>.trycloudflare.com), localtunnel (<name>.loca.lt) and
+// localhost.run (<name>.app.lhr.life).
+const allowedHosts = [
+  '.trycloudflare.com',
+  '.loca.lt',
+  '.lhr.life',
+  'localhost',
+  ...(process.env.VITE_ALLOWED_HOSTS ? process.env.VITE_ALLOWED_HOSTS.split(',') : []),
+]
+
 // https://vitejs.dev/config/
 export default defineConfig({
+  base,
   plugins: [react()],
   resolve: {
     // Regex aliases are order-independent and avoid prefix collisions
@@ -20,7 +40,7 @@ export default defineConfig({
     // Vite blocks unknown Host headers by default (DNS-rebinding protection).
     // The leading '.' allows every subdomain of the listed domain, which is
     // required for Cloudflare quick tunnels (random <name>.trycloudflare.com).
-    allowedHosts: ['.trycloudflare.com', '.loca.lt', 'localhost'],
+    allowedHosts,
     proxy: {
       // Keep the proxy target on IPv4 loopback: the backend uvicorn binds
       // 127.0.0.1, and "localhost" alone can hang on IPv6-first resolvers.
@@ -29,7 +49,7 @@ export default defineConfig({
   },
   preview: {
     port: 4173,
-    allowedHosts: ['.trycloudflare.com', '.loca.lt', 'localhost'],
+    allowedHosts,
     proxy: {
       // Same IPv4-loopback rule as the dev proxy: the backend binds 127.0.0.1.
       '/api': 'http://127.0.0.1:8000',

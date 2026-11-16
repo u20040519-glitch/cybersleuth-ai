@@ -9,8 +9,18 @@
 
 import axios, { AxiosError, AxiosInstance } from 'axios'
 
+// The API location is resolved in this order:
+//
+//   1. window.__CYBERSLEUTH_CONFIG__.apiBaseUrl - a static file that is served
+//      next to the bundle, so the URL can be changed without a rebuild.
+//   2. VITE_API_BASE_URL - inlined by Vite at build time.
+//   3. '/api' - the same origin, which is what the Netlify redirect rule and
+//      the Vite dev server proxy handle.
+const runtimeConfig = (window as any).__CYBERSLEUTH_CONFIG__ || {}
 const API_BASE_URL =
-  (import.meta as any).env.VITE_API_BASE_URL?.trim() || '/api'
+  runtimeConfig.apiBaseUrl?.trim() ||
+  (import.meta as any).env.VITE_API_BASE_URL?.trim() ||
+  '/api'
 
 const ACCESS_KEY = 'cybersleuth_access_token'
 const REFRESH_KEY = 'cybersleuth_refresh_token'

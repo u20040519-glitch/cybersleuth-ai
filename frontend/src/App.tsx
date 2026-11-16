@@ -28,9 +28,14 @@ import { AuditLogsPage } from '@/pages/AuditLogsPage'
 import { SettingsPage } from '@/pages/SettingsPage'
 
 export default function App() {
+  // The basename follows the public base path of the build (the root on
+  // Netlify, /<repo>/ on GitHub Pages), so the client-side routes keep
+  // working on every host.
+  const basename = import.meta.env.BASE_URL.replace(/\/+$/, '') || '/'
+
   return (
     <AuthProvider>
-      <BrowserRouter>
+      <BrowserRouter basename={basename}>
         <Routes>
           {/* Guest routes */}
           <Route path="/login" element={<GuestRoute><LoginPage /></GuestRoute>} />
