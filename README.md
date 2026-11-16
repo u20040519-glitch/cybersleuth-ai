@@ -144,9 +144,53 @@ Frontend verification: TypeScript strict `tsc --noEmit` + production build + a C
 
 | Piece | Target | How |
 | --- | --- | --- |
+| Frontend (SPA) | **GitHub Pages** (public demo) | `node scripts/deploy_github_pages.mjs --api-base-url <url>` builds the app with the `/<repo>/` base path and publishes it to the `gh-pages` branch. No access wall, no Netlify login. |
 | Frontend (SPA) | **Netlify** | Connect the repo; `netlify.toml` already configures base `frontend`, `npm run build`, publish `dist`, SPA fallback and security headers. Set `VITE_API_BASE_URL=https://<backend>/api` in the Netlify env. |
 | Backend (API) | **Render** (or Railway) | `render.yaml` blueprint included. Build context is the repo root: `docker build -t cybersleuth-api -f backend/Dockerfile .` |
 | Database / Auth / Storage / RLS | **Supabase** (or any Postgres) | Apply `supabase/migrations/*.sql` in order (e.g. `supabase db push`). The same files run locally against the embedded server — one schema, both environments. Create the three private buckets (`evidence-originals`, `evidence-derived`, `reports`) — migration 009 does this on Supabase. |
+
+### Public demo (no login required)
+
+The Netlify site of this repository belongs to the team *Desi Boyzzz*, whose
+plan forces **"Members only"** visibility on every site it owns. That is a
+team-level setting: it cannot be switched off per site and it cannot be
+changed through the API, so `cybersleuth-ai.netlify.app` answers `401` for
+every visitor. The older `inquisitive-tapioca-615ed3.netlify.app` still
+serves the previous build, but it is not in any account that can be reached
+from this machine.
+
+Two public paths replace it:
+
+1. **GitHub Pages** — the published demo lives at
+   `https://u20040519-glitch.github.io/cybersleuth-ai/`. It is served by the
+   repository itself, so it stays up when this machine is off.
+
+   ```bash
+   # publish the frontend (build + push to the gh-pages branch)
+   node scripts/deploy_github_pages.mjs --api-base-url https://<api>/api
+
+   # move the published demo to another API without rebuilding
+   node scripts/set_pages_api_url.mjs --url https://<api>
+   ```
+
+2. **The local stack behind a tunnel** — the API, the preview server and an
+   SSH tunnel run on this machine, so the whole application is reachable
+   from anywhere under a single HTTPS address:
+
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File scripts/start_public_demo.ps1 -Publish
+   powershell -ExecutionPolicy Bypass -File scripts/stop_public_demo.ps1
+   ```
+
+   The supervisor reconnects the tunnel when the tunnel service drops the
+   connection and republishes the new address to the Pages build, so the
+   demo follows along. The tunnel address is written to
+   `scripts/.public-demo.txt`.
+
+   `scripts/start_public_demo.ps1` is the fastest way to see the finished
+   product: the API runs against the embedded PostgreSQL, the seeded case
+   (`CASE-2026-0147`) is already in the database, and the demo credentials
+   are `investigator@cybersleuth.ai` / `Investigator!2026`.
 
 ### Environment variables
 

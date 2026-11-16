@@ -186,6 +186,9 @@ scratch-evidence/
 # Local Netlify folder
 .netlify
 
+# The public address of the running demo (written by the demo scripts)
+scripts/.public-demo.txt
+
 # TypeScript build artefacts (tsc -b emits these next to the sources)
 *.tsbuildinfo
 frontend/vite.config.js
