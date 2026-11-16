@@ -18,7 +18,42 @@
   publish = "dist"
 
 [build.environment]
-  NODE_VERSION = "18"
+  # Node 18 reached end-of-life and is no longer installed on the Netlify
+  # build image; Node 20 is the version used by the Docker image and by the
+  # devcontainer, so the three must agree.
+  NODE_VERSION = "20"
+
+  # Absolute URL of the deployed API. The default points at the Render
+  # service created from render.yaml.
+  #
+  # OVERRIDE THIS in Netlify -> Site configuration -> Environment variables
+  # as soon as the API lives somewhere else (a staging host, a tunnel, a
+  # different Render service). Only public values may be set here - the
+  # Gemini key and the Supabase service-role key must NEVER be exposed.
+  VITE_API_BASE_URL = "https://cybersleuth-api.onrender.com/api"
+
+# ---------------------------------------------------------------------------
+# API proxy
+# ---------------------------------------------------------------------------
+# The SPA catch-all below rewrites EVERY unknown path to /index.html with a
+# HTTP 200. Without an explicit rule, an API call made against a relative
+# base URL (/api/...) would therefore be answered with the HTML of the SPA
+# instead of JSON - the request "succeeds" and the application then fails to
+# parse the response.
+#
+# This rule proxies /api/* to the API host BEFORE the catch-all is evaluated.
+# `status = 200` rewrites the proxied response status so the browser never
+# sees a redirect, and `force = true` makes the rule apply even when a file
+# with the same name exists in the published directory.
+#
+# Netlify proxies with a fixed timeout (26 seconds by default) - long
+# running forensic analyses should therefore be pointed at the API host
+# directly by overriding VITE_API_BASE_URL above.
+[[redirects]]
+  from = "/api/*"
+  to = "https://cybersleuth-api.onrender.com/api/:splat"
+  status = 200
+  force = true
 
 # ---------------------------------------------------------------------------
 # SPA fallback

@@ -1,0 +1,19 @@
+-- =============================================================================
+-- supabase/seed.sql
+-- =============================================================================
+-- Intentionally empty.
+--
+-- The demo case is not seeded from SQL. It is produced by driving the running
+-- application through its own HTTP API, so every user, evidence item, hash,
+-- chain-of-custody event, analysis result, correlation finding and PDF report
+-- in the demo data is created by the real pipeline rather than pasted in as
+-- literal rows:
+--
+--     python scripts/seed_demo_data.py --base-url http://127.0.0.1:8000/api
+--
+-- The script is idempotent, so it can be re-run against an existing
+-- deployment without duplicating anything.
+--
+-- This file exists so that `supabase db reset` / `supabase start` has a seed
+-- target to point at and never fails on a missing file.
+-- =============================================================================

@@ -40,24 +40,14 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
-try:  # pragma: no cover - import shim for alternative deployment layouts
-    from app.forensic.base import (
-        completed,
-        failed,
-        finding,
-        output_dir,
-        timeline_event,
-        unavailable,
-    )
-except ImportError:  # pragma: no cover - package imported under another name
-    from ..base import (  # type: ignore[no-redef]
-        completed,
-        failed,
-        finding,
-        output_dir,
-        timeline_event,
-        unavailable,
-    )
+from app.forensic.base import (
+    completed,
+    failed,
+    finding,
+    output_dir,
+    timeline_event,
+    unavailable,
+)
 
 logger = logging.getLogger(__name__)
 

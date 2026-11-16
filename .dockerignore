@@ -1,25 +1,43 @@
+# =============================================================================
+# CYBERSLEUTH AI - Docker build context exclusions
+# =============================================================================
+# Applied to the REPOSITORY ROOT build context used by both images:
+#   docker build -t cybersleuth-api     -f backend/Dockerfile  .
+#   docker build -t cybersleuth-frontend -f frontend/Dockerfile .
+#
+# The patterns below use `**/` so that they match at ANY depth: the local
+# PostgreSQL cluster lives in backend/.pgdata, not in ./.pgdata.
+# =============================================================================
+
 # Version control / local state
 .git
 .gitignore
+.github
 **/__pycache__
 **/*.pyc
-.pgdata
-.pgdata_test
-.pytest_cache
-.venv
-.venv310
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+**/.venv
+**/.venv310
+**/venv
 
 # Local evidence and artefacts must never enter an image
+**/.pgdata
+**/.pgdata_test
 backend/storage
 uploads
 evidence
 scratch-evidence
 scratch-e2e
 *.apk
+*.apks
 
 # Frontend build output (deployed separately on Netlify)
-frontend/node_modules
-frontend/dist
+**/node_modules
+**/dist
+**/.netlify
+**/.vite
 
 # Secrets - the image gets configuration from the platform environment
 .env
@@ -35,3 +53,4 @@ docs
 !backend/README.md
 scripts
 .vscode
+.devcontainer

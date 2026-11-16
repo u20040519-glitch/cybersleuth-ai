@@ -1,0 +1,21 @@
+# =============================================================================
+# CYBERSLEUTH AI - Frontend build context exclusions
+# =============================================================================
+# Used when the frontend directory itself is the build context, e.g.
+#   docker build -t cybersleuth-frontend -f Dockerfile .
+#   (run from inside frontend/)
+#
+# The documented build uses the REPOSITORY ROOT as the context
+# (docker build -t cybersleuth-frontend -f frontend/Dockerfile .); in that
+# case the root .dockerignore applies and this file is not read.
+# =============================================================================
+
+node_modules
+dist
+.netlify
+.vite
+
+# Secrets - the bundle only ever receives VITE_* build arguments
+.env
+.env.*
+!.env.example

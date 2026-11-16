@@ -23,21 +23,29 @@ from app.services.gemini import get_gemini
 
 logger = logging.getLogger(__name__)
 
-# Entities that are strong enough to link two modules together.
+# Entities that are strong enough to link two modules together. The list
+# mirrors the entity prefixes that `extract_entities` actually emits, so a
+# kind that is never extracted never claims a confidence here.
 STRONG_ENTITY_PATTERNS = (
     "email",
     "url",
     "ip",
-    "domain",
-    "phone",
     "filename",
     "sha256",
-    "package",
 )
 
 # Two events from different modules this close together are treated as
 # potentially related. This is a heuristic and is labelled as one.
 TEMPORAL_PROXIMITY_SECONDS = 120
+
+# Every observation of an artefact carries that artefact's SHA-256, so a
+# single entity group can hold hundreds of observations. An unbounded
+# pairwise expansion of such a group would emit tens of thousands of
+# connections, every one of which is persisted as a correlation row. The
+# caps below keep the result reviewable. When a cap bites, the truncation is
+# logged and recorded in the result - it is never silent.
+MAX_CONNECTIONS_PER_GROUP = 200
+MAX_TOTAL_CONNECTIONS = 2000
 
 
 @dataclass
@@ -65,6 +73,39 @@ class Connection:
     confidence: float
     evidence_ids: List[str] = field(default_factory=list)
     timestamp: Optional[datetime] = None
+    # The graph node ids of the two endpoints. They are produced by
+    # `_event_node_id`, the very helper the graph builder uses, so an edge can
+    # never point at a node id that the graph does not contain.
+    source_id: str = ""
+    target_id: str = ""
+
+
+# -----------------------------------------------------------------------------
+# Node identity
+# -----------------------------------------------------------------------------
+def _event_scope(event: Event) -> str:
+    """The namespace an observation belongs to.
+
+    The evidence id is used when the observation can be tied to an artefact,
+    otherwise the module name. Two observations of different artefacts never
+    share a scope, so their node ids never collide.
+    """
+    return event.evidence_id or event.module or "unknown"
+
+
+def _event_node_id(event: Event) -> str:
+    """The graph node id of one observation.
+
+    Node creation and edge creation both go through this helper, so the two
+    can never drift apart.
+    """
+    return f"event:{_event_scope(event)}:{event.label}"
+
+
+def _node_id_from_side(side: str) -> str:
+    """Rebuild a node id from a "module:label" endpoint string."""
+    module, _, label = str(side).partition(":")
+    return f"event:{module or 'unknown'}:{label}"
 
 
 # -----------------------------------------------------------------------------
@@ -74,6 +115,18 @@ EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
 URL_RE = re.compile(r"https?://[^\s\"'<>]+")
 IP_RE = re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b")
 SHA_RE = re.compile(r"\b[a-fA-F0-9]{64}\b")
+# A file name is a weak but genuinely useful link: two artefacts that both
+# mention "invoice.pdf" plausibly refer to the same document. Only names
+# carrying a known document/media/archive extension are picked up so that
+# ordinary prose (or a sentence-ending full stop) is never mistaken for one.
+FILENAME_RE = re.compile(
+    r"(?<![\w.])([A-Za-z0-9][A-Za-z0-9._()\-]{0,63}\."
+    r"(?:txt|json|csv|log|pdf|docx?|xlsx?|pptx?|rtf|odt|ods|eml|msg|pst|"
+    r"png|jpe?g|gif|bmp|tiff?|webp|svg|heic|mp4|mkv|mov|avi|wmv|webm|"
+    r"mp3|wav|flac|aac|ogg|m4a|zip|rar|7z|tar|gz|bz2|apk|ipa|exe|dll|"
+    r"dex|so|jar|class|db|sqlite|sql|bak|bin|img|iso|dat))\b",
+    re.IGNORECASE,
+)
 
 
 def parse_timestamp(value: Any) -> Optional[datetime]:
@@ -102,7 +155,11 @@ def parse_timestamp(value: Any) -> Optional[datetime]:
 
 
 def extract_entities(text: str) -> List[str]:
-    """Pull the strong, linkable identifiers out of a piece of text."""
+    """Pull the strong, linkable identifiers out of a piece of text.
+
+    The prefixes emitted here are the ones listed in
+    `STRONG_ENTITY_PATTERNS`; keep the two in step.
+    """
     if not text:
         return []
     found: List[str] = []
@@ -114,6 +171,8 @@ def extract_entities(text: str) -> List[str]:
         found.append(f"ip:{match}")
     for match in SHA_RE.findall(text):
         found.append(f"sha256:{match.lower()}")
+    for match in FILENAME_RE.findall(text):
+        found.append(f"filename:{match.lower()}")
     return found
 
 
@@ -154,8 +213,9 @@ def collect_events(analyses: Iterable[Dict[str, Any]]) -> List[Event]:
             details = str(entry.get("details") or "")
             source = str(entry.get("source") or module)
 
-            entities = list(entry.get("entities") or [])
-            entities.extend(build_entities(label, details))
+            # No analyzer emits an "entities" list on a timeline entry: the
+            # entities of an observation are derived from its own text.
+            entities = build_entities(label, details)
 
             events.append(
                 Event(
@@ -180,8 +240,7 @@ def collect_events(analyses: Iterable[Dict[str, Any]]) -> List[Event]:
             )
             label = str(finding_item.get("label") or "finding")
             details = str(finding_item.get("detail") or "")
-            entities = list(finding_item.get("entities") or [])
-            entities.extend(build_entities(label, details, finding_item.get("value") or ""))
+            entities = build_entities(label, details, finding_item.get("value") or "")
             events.append(
                 Event(
                     timestamp=timestamp,

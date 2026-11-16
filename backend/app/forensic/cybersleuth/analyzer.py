@@ -32,7 +32,7 @@ import logging
 import re
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from app.core.config import settings
 from app.core.security import sha256_file
@@ -42,7 +42,6 @@ from app.forensic.base import (
     finding,
     output_dir,
     timeline_event,
-    unavailable,
 )
 
 logger = logging.getLogger(__name__)
@@ -220,9 +219,10 @@ def _json_messages(payload: Any) -> List[Dict[str, Any]]:
         body = next((item[k] for k in CHAT_BODY_KEYS if k in item), None)
         if body is None:
             continue
+        parsed = _parse_ts(timestamp)
         records.append(
             {
-                "timestamp": _parse_ts(timestamp).isoformat() if _parse_ts(timestamp) else None,
+                "timestamp": parsed.isoformat() if parsed else None,
                 "sender": str(sender).strip() if sender is not None else None,
                 "body": str(body).strip(),
             }

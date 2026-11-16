@@ -152,7 +152,11 @@ DROP POLICY IF EXISTS evidence_events_select ON public.evidence_events;
 CREATE POLICY evidence_events_select ON public.evidence_events
     FOR SELECT USING (public.can_access_evidence(evidence_id));
 
-DROP POLICY IF EXISTS evidence_events_insert ON public.evidence_events;
+-- The policy is created as `evidence_insert_events`, so that is the name that
+-- has to be dropped. Dropping `evidence_events_insert` removed a policy that
+-- never existed and left `evidence_insert_events` in place, so re-running
+-- this file failed with "policy ... already exists".
+DROP POLICY IF EXISTS evidence_insert_events ON public.evidence_events;
 CREATE POLICY evidence_insert_events ON public.evidence_events
     FOR INSERT WITH CHECK (public.can_access_evidence(evidence_id));
 

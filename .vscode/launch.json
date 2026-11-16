@@ -5,6 +5,7 @@
       "name": "CyberSleuth: debug API",
       "type": "debugpy",
       "request": "launch",
+      "python": "${workspaceFolder}/.venv310/Scripts/python.exe",
       "module": "uvicorn",
       "args": ["app.main:app", "--host", "127.0.0.1", "--port", "8000"],
       "cwd": "${workspaceFolder}/backend",
@@ -21,6 +22,9 @@
       "cwd": "${workspaceFolder}/frontend",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
+      "windows": {
+        "runtimeExecutable": "npm.cmd"
+      },
       "console": "integratedTerminal",
       "skipFiles": ["<node_internals>/**"],
       "serverReadyAction": {
@@ -31,13 +35,36 @@
     },
     {
       "name": "Run CyberSleuth AI (production preview)",
+      "detail": "Serves the production bundle with `vite preview` - Vite uses port 4173, not 3000.",
       "type": "node",
       "request": "launch",
       "cwd": "${workspaceFolder}/frontend",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "preview"],
+      "windows": {
+        "runtimeExecutable": "npm.cmd"
+      },
       "console": "integratedTerminal",
-      "skipFiles": ["<node_internals>/**"]
+      "skipFiles": ["<node_internals>/**"],
+      "serverReadyAction": {
+        "pattern": "Local:\\s+(http://localhost:4173)",
+        "uriFormat": "%s",
+        "action": "openExternally"
+      }
+    }
+  ],
+  "compounds": [
+    {
+      "name": "CyberSleuth: full stack (API + UI)",
+      "detail": "Starts the FastAPI backend (debugger attached) and the Vite dev server together",
+      "type": "compound",
+      "request": "launch",
+      "preLaunchTask": "Install all dependencies",
+      "configurations": [
+        "CyberSleuth: debug API",
+        "Run CyberSleuth AI (dev server)"
+      ],
+      "stopAll": true
     }
   ]
 }

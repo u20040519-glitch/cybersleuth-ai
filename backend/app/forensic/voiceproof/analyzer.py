@@ -93,10 +93,10 @@ N_MELS = 128
 # Relative timestamps use a fixed epoch so that "1.5 s into the file" is
 # expressed as an unambiguous ISO-8601 instant.
 EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
-# Anchor for converting audio offsets to wall-clock instants. `analyze` sets this
-# to the evidence file's modification time before any segment is emitted, so the
-# timeline carries a real, disclosed anchor instead of 1970-01-01.
-_FILE_EPOCH = EPOCH
+# The anchor that converts audio offsets to wall-clock instants is *not* a
+# module global: the API runs the analyzers through `asyncio.to_thread`, so a
+# shared global would let one run anchor its segments to another file's
+# modification time. Every run carries its own anchor as a local value.
 
 
 # -----------------------------------------------------------------------------
@@ -116,9 +116,13 @@ def _guess_mime(path: Path) -> str:
     return guessed or "application/octet-stream"
 
 
-def _iso_at(offset_seconds: float) -> str:
-    """Convert an offset from the start of the file into an ISO-8601 instant."""
-    return (_FILE_EPOCH + timedelta(seconds=float(offset_seconds))).isoformat()
+def _iso_at(offset_seconds: float, epoch: datetime) -> str:
+    """Convert an offset from the start of the file into an ISO-8601 instant.
+
+    `epoch` is the anchor of the file under analysis; it is passed in rather
+    than read from module state so that concurrent runs cannot mix them up.
+    """
+    return (epoch + timedelta(seconds=float(offset_seconds))).isoformat()
 
 
 def _cosine_distance(left: Any, right: Any) -> float:
@@ -613,11 +617,13 @@ def analyze(file_path: str, options: Dict[str, Any]) -> Dict[str, Any]:
     except OSError as exc:
         return failed(MODULE, f"the file could not be inspected: {exc}", filename)
 
-    global _FILE_EPOCH
+    # The timeline anchor is the modification time of this evidence file. It
+    # is a local value: a module-level global would be shared between the
+    # concurrent runs the API schedules on worker threads.
     try:
-        _FILE_EPOCH = datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc)
+        epoch = datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc)
     except OSError:
-        _FILE_EPOCH = EPOCH
+        epoch = EPOCH
 
     try:
         mono, sample_rate, channels = _load_audio(path)
@@ -635,7 +641,7 @@ def analyze(file_path: str, options: Dict[str, Any]) -> Dict[str, Any]:
     try:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            return _analyze_audio(path, mono, sample_rate, channels, options)
+            return _analyze_audio(path, mono, sample_rate, channels, options, epoch)
     except Exception as exc:  # pragma: no cover - defensive, never leak a trace
         logger.exception("voiceproof analysis failed for %s", path)
         return failed(MODULE, f"the audio could not be analysed: {exc}", filename)
@@ -647,6 +653,7 @@ def _analyze_audio(
     sample_rate: int,
     channels: int,
     options: Dict[str, Any],
+    epoch: datetime,
 ) -> Dict[str, Any]:
     """Run every check on a decoded signal and assemble the module payload."""
     top_db = float(options.get("top_db", 30) or 30)
@@ -776,7 +783,7 @@ def _analyze_audio(
     for segment in segments:
         timeline.append(
             timeline_event(
-                _iso_at(segment["start"]),
+                _iso_at(segment["start"], epoch),
                 f"Segment {segment['index'] + 1} start",
                 source=MODULE,
                 details=(
@@ -790,7 +797,7 @@ def _analyze_audio(
     for silence in silences:
         timeline.append(
             timeline_event(
-                _iso_at(silence["start"]),
+                _iso_at(silence["start"], epoch),
                 f"Silence at {silence['start']:.3f} s",
                 source=MODULE,
                 details=(
@@ -840,7 +847,7 @@ def _analyze_audio(
         )
         timeline.append(
             timeline_event(
-                _iso_at(offset),
+                _iso_at(offset, epoch),
                 f"Possible splice at {offset:.3f} s",
                 source=MODULE,
                 details=(
@@ -872,7 +879,7 @@ def _analyze_audio(
         )
         timeline.append(
             timeline_event(
-                _iso_at(offset),
+                _iso_at(offset, epoch),
                 f"Outlier segment at {offset:.3f} s",
                 source=MODULE,
                 details=(

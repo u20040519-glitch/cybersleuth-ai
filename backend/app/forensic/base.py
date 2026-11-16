@@ -38,7 +38,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -163,6 +163,3 @@ def output_dir(options: Dict[str, Any]) -> Optional[Path]:
     path = Path(raw)
     path.mkdir(parents=True, exist_ok=True)
     return path
-
-
-Analyzer = Callable[[str, Dict[str, Any]], Dict[str, Any]]

@@ -16,10 +16,23 @@ services:
   - type: web
     name: cybersleuth-api
     runtime: docker
-    plan: free
+    # NOT the free plan: the free plan caps the container at 512 MB of RAM
+    # and spins the service down after inactivity. This image loads opencv,
+    # spaCy, librosa and the whole dependency tree at start-up, which is
+    # regularly OOM-killed on the free tier.
+    plan: starter
     dockerfilePath: backend/Dockerfile
     dockerContext: .
+    # Verified against backend/app/main.py (the health router is mounted
+    # under the /api prefix) and backend/app/api/health.py.
     healthCheckPath: /api/health
+    # Persistent disk for locally stored evidence and generated reports.
+    # The container writes to UPLOAD_DIRECTORY (see below); nothing is lost
+    # when the service is redeployed or restarted.
+    disk:
+      name: storage
+      mountPath: /srv/backend/storage
+      sizeGB: 10
     envVars:
       - key: APP_ENV
         value: production
@@ -37,6 +50,8 @@ services:
         sync: false   # privileged URL, migrations only (e.g. Supabase Postgres)
       - key: APP_DATABASE_URL
         sync: false   # restricted runtime role, e.g. cybersleuth_app@...
+      - key: APP_DB_USER
+        value: cybersleuth_app
       - key: APP_DB_PASSWORD
         generateValue: true
       - key: SUPABASE_URL
@@ -45,8 +60,34 @@ services:
         sync: false
       - key: SUPABASE_SERVICE_ROLE_KEY
         sync: false
+      # Evidence and reports are written to the persistent disk mounted at
+      # /srv/backend/storage. Switch STORAGE_BACKEND to "supabase" to keep
+      # the objects in Supabase Storage instead - the disk then becomes
+      # unnecessary and can be removed from this blueprint.
       - key: STORAGE_BACKEND
-        value: supabase   # or "local" with a persistent disk mounted at /srv/backend/storage
+        value: local
+      - key: UPLOAD_DIRECTORY
+        value: /srv/backend/storage
+      - key: MAX_UPLOAD_SIZE_MB
+        value: "100"
+      - key: ALLOWED_EXTENSIONS
+        value: "pdf,docx,txt,json,csv,png,jpg,jpeg,tiff,mp3,wav,m4a,apk,zip,mp4,mov"
+      - key: FORENSIC_MODULES_ENABLED
+        value: "true"
+      - key: SPACY_MODEL
+        value: en_core_web_sm
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: JWT_ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "30"
+      - key: JWT_REFRESH_TOKEN_EXPIRE_DAYS
+        value: "7"
+      - key: SESSION_COOKIE_SECURE
+        value: "true"
+      - key: REGISTRATION_EMAIL_VERIFICATION_REQUIRED
+        value: "false"
+      - key: LOG_LEVEL
+        value: INFO
       - key: GEMINI_API_KEY
         sync: false   # backend only; never expose with a VITE_ prefix
       - key: GEMINI_MODEL

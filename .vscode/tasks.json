@@ -40,7 +40,7 @@
       },
       "group": {
         "kind": "build",
-        "isDefault": true
+        "isDefault": false
       }
     },
     {
@@ -55,11 +55,29 @@
     },
     {
       "label": "CyberSleuth: install backend dependencies",
+      "detail": "Installs backend/requirements-dev.txt (production requirements + the development-only embedded PostgreSQL)",
       "type": "shell",
-      "command": "${command:python.interpreterPath} -m pip install -r requirements.txt",
+      "command": "${command:python.interpreterPath} -m pip install -r backend/requirements-dev.txt",
       "options": {
-        "cwd": "${workspaceFolder}/backend"
+        "cwd": "${workspaceFolder}"
       },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      }
+    },
+    {
+      "label": "Install all dependencies",
+      "detail": "Backend (pip) and frontend (npm) dependencies - run once on a fresh clone",
+      "type": "shell",
+      "command": "echo Installing backend and frontend dependencies",
+      "dependsOn": [
+        "CyberSleuth: install backend dependencies",
+        "Install frontend dependencies"
+      ],
+      "dependsOrder": "parallel",
       "problemMatcher": [],
       "presentation": {
         "reveal": "always",
@@ -78,14 +96,14 @@
           "PYTHONUNBUFFERED": "1"
         }
       },
+      "dependsOn": ["CyberSleuth: install backend dependencies"],
       "isBackground": true,
       "problemMatcher": {
         "owner": "shell",
         "pattern": {
-          "regexp": "^$",
+          "regexp": "^(E\\s{2,}(.*)|Traceback \\(most recent call last\\))$",
           "file": 1,
-          "location": 2,
-          "message": 3
+          "message": 2
         },
         "background": {
           "activeOnStart": true,
@@ -100,7 +118,7 @@
       },
       "group": {
         "kind": "build",
-        "isDefault": true
+        "isDefault": false
       }
     },
     {
@@ -111,6 +129,7 @@
       "options": {
         "cwd": "${workspaceFolder}/frontend"
       },
+      "dependsOn": ["Install frontend dependencies"],
       "isBackground": true,
       "problemMatcher": {
         "owner": "typescript",
@@ -130,11 +149,16 @@
     },
     {
       "label": "CyberSleuth: start full stack",
-      "detail": "API (8000) + frontend (3000) together",
+      "detail": "API (8000) + frontend (3000) together - installs the dependencies first so it also works on a fresh clone",
       "type": "shell",
       "command": "echo CyberSleuth AI is starting: API on http://127.0.0.1:8000, UI on http://localhost:3000",
-      "dependsOn": ["CyberSleuth: start API", "CyberSleuth: start frontend"],
-      "dependsOrder": "parallel",
+      "dependsOn": [
+        "CyberSleuth: install backend dependencies",
+        "Install frontend dependencies",
+        "CyberSleuth: start API",
+        "CyberSleuth: start frontend"
+      ],
+      "dependsOrder": "sequence",
       "problemMatcher": [],
       "presentation": {
         "reveal": "always",
@@ -176,10 +200,74 @@
       }
     },
     {
+      "label": "CyberSleuth: lint frontend",
+      "detail": "ESLint over frontend/src (--max-warnings 0)",
+      "type": "shell",
+      "command": "npm run lint",
+      "options": {
+        "cwd": "${workspaceFolder}/frontend"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      }
+    },
+    {
+      "label": "CyberSleuth: reset dev database",
+      "detail": "Drops and rebuilds the local schema from supabase/migrations (refuses to run against a non-local database)",
+      "type": "shell",
+      "command": "${command:python.interpreterPath} scripts/reset_dev_db.py",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      }
+    },
+    {
+      "label": "CyberSleuth: build docker images",
+      "detail": "Builds the API and the frontend image from the repository root context",
+      "type": "shell",
+      "command": "docker build -t cybersleuth-api -f backend/Dockerfile . && docker build -t cybersleuth-frontend -f frontend/Dockerfile .",
+      "windows": {
+        "command": "cmd /c \"docker build -t cybersleuth-api -f backend/Dockerfile . && docker build -t cybersleuth-frontend -f frontend/Dockerfile .\""
+      },
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      }
+    },
+    {
       "label": "CyberSleuth: seed demo data",
       "detail": "Recreate the Operation Silent Whisper case (idempotent)",
       "type": "shell",
       "command": "${command:python.interpreterPath} scripts/seed_demo_data.py",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "dependsOn": ["CyberSleuth: start API"],
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      }
+    },
+    {
+      "label": "CyberSleuth: generate scratch evidence",
+      "detail": "Synthesises the demo evidence files in scratch-evidence/ (does not overwrite existing files)",
+      "type": "shell",
+      "command": "${command:python.interpreterPath} scripts/generate_scratch_evidence.py",
       "options": {
         "cwd": "${workspaceFolder}"
       },

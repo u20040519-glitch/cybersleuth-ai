@@ -133,3 +133,14 @@ COMMENT ON FUNCTION public.can_access_investigation(uuid) IS
     'Returns true when the caller is the investigation owner or a listed member.';
 COMMENT ON FUNCTION public.can_manage_investigation(uuid) IS
     'Returns true for supervisors and for the investigation owner.';
+
+-- -----------------------------------------------------------------------------
+-- Restore function body checking
+-- -----------------------------------------------------------------------------
+-- The switch above is a session level setting and every migration is executed
+-- on the SAME connection, so without this line it stayed off for the rest of
+-- the run and the SQL-language functions created in 002-012 (can_access_evidence,
+-- is_investigation_member, ...) were never parsed and analysed at creation
+-- time. A typo in one of them would then only surface at runtime.
+-- -----------------------------------------------------------------------------
+SET check_function_bodies = on;
