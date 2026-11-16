@@ -127,13 +127,38 @@
   after 10 s on a cold start, leaves the server running and leaves pgserver
   with an empty handle (`assert self._postmaster_info is not None`). The
   startup now retries and re-attaches to the running server.
+- **The login page blamed the password for every failure.** A request that
+  never reached the API — the demo backend lives behind a tunnel whose
+  address changes — was reported as *“Invalid email or password”*, and so was
+  an answer that was not the API's JSON at all (a static host replying
+  404/405 with an HTML page). The audit log proved it: the failed attempts
+  were never recorded, because they never arrived.
+
+  The app now
+  - resolves the API at runtime from a candidate list (`runtime-config.js`,
+    the same file straight from the repository, the build-time variable and
+    the same origin) and uses the first candidate that answers `/health`,
+  - retries a failed request against the next candidate,
+  - shows an **API status** indicator on the login page (online / unreachable,
+    with the address it uses and a retry button),
+  - distinguishes a real 401 from a network failure, a rate limit, a server
+    error and a response that is not the API,
+  - lists the demo accounts, one click to fill them in.
+
+  `scripts/browser_smoke_test.mjs` drives a headless Chrome through the
+  whole flow — page load, API status, sign in, dashboard — and both entry
+  points (GitHub Pages and the tunneled demo) pass it.
 
 ### Verification
 
 | Check | Result |
 | --- | --- |
 | `pytest -q` (backend) | **41 passed** |
-| `npm run build` (frontend) | ✅ built (783 kB JS / 228 kB gzip) + `404.html` |
+| `npm run build` (frontend) | ✅ built (788 kB JS / 230 kB gzip) + `404.html` |
+| Browser smoke (headless Chrome, Pages build) | **PASS** — page loaded · API online · sign in · `/dashboard` · token stored |
+| Browser smoke (headless Chrome, tunneled demo) | **PASS** — same flow |
+| Browser smoke with a **dead** API address first | **PASS** — the app fell through to the next candidate |
+| Browser smoke with **no** reachable API | the login is refused and the page says *“API unreachable”* and *“The API answered 405 … does not point at the CyberSleuth API”* — never *“Invalid email or password”* |
 | `GET /api/health` (local + tunnel) | `{"status":"ok","database":"ok","storage":"ok",...}` |
 | Pages build | `200`, assets `200`, `runtime-config.js` points at the live API |
 | Cross-origin login from the Pages origin | `200` — CORS preflight answered by the API (`Access-Control-Allow-Origin`) |
@@ -165,6 +190,9 @@ node scripts/deploy_github_pages.mjs --api-base-url https://<api>/api
 
 # package the sources for another machine
 python scripts/package_local_release.py
+
+# browser smoke test (headless Chrome, no dependencies)
+node scripts/browser_smoke_test.mjs
 ```
 
 Seeded sign-ins: `investigator@cybersleuth.ai / Investigator!2026` and `supervisor@cybersleuth.ai / Supervisor!2026` (**rotate in production**).
