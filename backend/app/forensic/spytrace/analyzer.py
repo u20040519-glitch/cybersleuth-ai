@@ -46,6 +46,7 @@ from app.forensic.base import (
     timeline_event,
     unavailable,
 )
+from app.services.sanitize import clean_text
 
 logger = logging.getLogger(__name__)
 
@@ -182,7 +183,11 @@ def _network_strings(apk: "APK") -> Tuple[List[str], List[str], List[str], List[
         logger.debug("dex string extraction failed", exc_info=True)
 
     for value in strings:
-        text = str(value)
+        # Packages carry strings with control characters - the XAP namespace
+        # of Android, for example, ends in a NUL byte. They are removed here:
+        # PostgreSQL cannot store a NUL inside a text value, so a single such
+        # string would otherwise break the write of the whole result.
+        text = clean_text(str(value))
         urls.extend(URL_RE.findall(text))
         ips.extend(IP_LITERAL_RE.findall(text))
         emails.extend(EMAIL_RE.findall(text))

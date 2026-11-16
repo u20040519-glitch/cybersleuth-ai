@@ -59,6 +59,71 @@ async def test_analyze_requires_accessible_evidence(client, investigator):
     assert response.status_code == 404
 
 
+async def test_analysis_result_with_a_nul_byte_is_stored(
+    client, investigator, uploaded_jpeg, monkeypatch
+):
+    """A NUL byte in a finding must not break the write of the result.
+
+    PostgreSQL cannot hold a NUL byte inside a text value, and `result_data`
+    is a JSONB column. Packages carry such strings in their string tables
+    (`http://ns.adobe.com/xap/1.0/\\u0000`), and the analysis used to fail
+    with "unsupported Unicode escape sequence" while the module had already
+    done its work.
+    """
+    from app.api import analysis as analysis_api
+
+    def analyzer_with_nul(file_path, options):
+        return {
+            "module": "deeptrace",
+            "status": "completed",
+            "summary": "embedded endpoint http://ns.adobe.com/xap/1.0/\x00",
+            "confidence_score": 0.5,
+            "filename": "sample.jpg",
+            "sha256": "0" * 64,
+            "mime": "image/jpeg",
+            "dimensions": None,
+            "findings": [
+                {
+                    "label": "Embedded network endpoints",
+                    "detail": "http://ns.adobe.com/xap/1.0/\x00",
+                    "method": "measured",
+                    "severity": "high",
+                    "value": {"urls": ["http://ns.adobe.com/xap/1.0/\x00"]},
+                }
+            ],
+            "timeline": [],
+            "metadata": {"network_strings": {"urls": ["http://ns.adobe.com/xap/1.0/\x00"]}},
+            "derived_files": [],
+        }
+
+    monkeypatch.setattr(
+        analysis_api, "_load_analyzer", lambda module: (analyzer_with_nul, True)
+    )
+
+    response = await client.post(
+        "/api/deeptrace/analyze",
+        json={"evidence_id": uploaded_jpeg["id"], "options": {}},
+        headers=investigator["headers"],
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "completed"
+
+    urls = body["result_data"]["findings"][0]["value"]["urls"]
+    assert urls == ["http://ns.adobe.com/xap/1.0/"]
+    assert "\x00" not in json.dumps(body)
+
+    # The row is really in the database and can be read back.
+    listed = await client.get(
+        "/api/analysis/results",
+        params={"evidence_id": uploaded_jpeg["id"]},
+        headers=investigator["headers"],
+    )
+    assert listed.status_code == 200
+    assert any(row["id"] == body["id"] for row in listed.json())
+
+
 async def test_correlation_runs_over_investigation(client, investigator, case, uploaded_jpeg):
     analyze = await client.post(
         "/api/deeptrace/analyze",

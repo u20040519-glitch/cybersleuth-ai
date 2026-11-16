@@ -190,6 +190,25 @@ function Publish-ApiUrl($urls) {
     & node @arguments | Out-Null
 }
 
+function Test-Tunnel($url) {
+    <#
+        Checks that a tunnel really serves traffic.
+
+        A quick tunnel can be dropped by the edge while cloudflared keeps
+        running and keeps retrying the registration of a tunnel that no
+        longer exists ("Unauthorized: Tunnel not found"). The process is
+        alive, but nothing is served - so the address has to be probed, not
+        the process watched.
+    #>
+    if (-not $url) { return $false }
+    try {
+        $response = Invoke-WebRequest -Uri $url -Method Get -TimeoutSec 15 -UseBasicParsing
+        return ($response.StatusCode -lt 500)
+    } catch {
+        return $false
+    }
+}
+
 Write-Step 'Starting the public tunnels'
 
 $appTunnel = Start-Tunnel -LocalPort $Port -Name 'app'
@@ -230,8 +249,11 @@ Write-Host '  Stop everything with scripts/stop_public_demo.ps1'
 # ---------------------------------------------------------------------------
 # 3. keep everything alive
 # ---------------------------------------------------------------------------
+$appFailures = 0
+$apiFailures = 0
+
 while ($true) {
-    Start-Sleep -Seconds 10
+    Start-Sleep -Seconds 15
 
     # The API and the preview server are watched as well: a crash there
     # would break the demo just as badly as a dead tunnel.
@@ -245,23 +267,44 @@ while ($true) {
         Start-Preview
     }
 
+    # --- the application tunnel ---------------------------------------------
     if ($appTunnel.Process.HasExited) {
-        Write-Host 'The application tunnel died - restarting it in 10s' -ForegroundColor Yellow
-        Start-Sleep -Seconds 10
+        $appFailures = 2
+    } elseif (Test-Tunnel $appTunnel.Url) {
+        $appFailures = 0
+    } else {
+        $appFailures++
+    }
+
+    if ($appFailures -ge 2) {
+        Write-Step 'The application tunnel does not serve anything - replacing it'
+        try { $appTunnel.Process.Kill() } catch { }
         $appTunnel = Start-Tunnel -LocalPort $Port -Name 'app'
+        $appFailures = 0
         if ($appTunnel.Url) {
             Set-Content -Path $OutputFile -Encoding utf8 -Value @(
                 "app: $($appTunnel.Url)"
                 "api: $(if ($apiTunnel.Url) { "$($apiTunnel.Url)/api" } else { "$($appTunnel.Url)/api" })"
             )
             Write-Host "  Public demo : $($appTunnel.Url)" -ForegroundColor Green
+            Publish-ApiUrl @($(if ($apiTunnel.Url) { $apiTunnel.Url }), $appTunnel.Url)
         }
     }
 
+    # --- the API tunnel -----------------------------------------------------
     if ($apiTunnel.Process.HasExited) {
-        Write-Host 'The API tunnel died - restarting it in 10s' -ForegroundColor Yellow
-        Start-Sleep -Seconds 10
+        $apiFailures = 2
+    } elseif (Test-Tunnel "$($apiTunnel.Url)/api/health") {
+        $apiFailures = 0
+    } else {
+        $apiFailures++
+    }
+
+    if ($apiFailures -ge 2) {
+        Write-Step 'The API tunnel does not serve anything - replacing it'
+        try { $apiTunnel.Process.Kill() } catch { }
         $apiTunnel = Start-Tunnel -LocalPort $ApiPort -Name 'api'
+        $apiFailures = 0
         if ($apiTunnel.Url) {
             Write-Host "  API         : $($apiTunnel.Url)/api" -ForegroundColor Green
             Publish-ApiUrl @($apiTunnel.Url, $appTunnel.Url)

@@ -30,6 +30,7 @@ from app.schemas import AnalysisJobOut, AnalysisRequest, AnalysisResultOut
 from app.security.deps import client_ip, get_current_user
 from app.services.audit import record_audit
 from app.services.custody import append_custody_event
+from app.services.sanitize import sanitize_json_value
 from app.services.storage import BUCKET_ORIGINALS, StorageError, get_storage
 
 logger = logging.getLogger(__name__)
@@ -155,6 +156,14 @@ def _build_router(module: str) -> APIRouter:
         result.setdefault("filename", evidence.original_filename)
         result.setdefault("sha256", evidence.sha256_hash)
         result.setdefault("mime", evidence.mime_type)
+
+        # The result is stored in a JSONB column, and PostgreSQL cannot hold a
+        # NUL byte inside a text value. Packages carry such strings in their
+        # string tables (for example `http://ns.adobe.com/xap/1.0/\u0000`), so
+        # they are removed before the write - otherwise the whole run fails
+        # with "unsupported Unicode escape sequence" although the module
+        # finished its work.
+        result = sanitize_json_value(result)
 
         record = AnalysisResult(
             evidence_id=evidence.id,
