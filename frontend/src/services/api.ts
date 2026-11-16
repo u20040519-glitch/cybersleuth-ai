@@ -8,19 +8,19 @@
 // =============================================================================
 
 import axios, { AxiosError, AxiosInstance } from 'axios'
+import {
+  apiBaseCandidates,
+  invalidateApiBase,
+  resolveApiBase,
+  SAME_ORIGIN_BASE,
+} from './runtimeConfig'
 
-// The API location is resolved in this order:
-//
-//   1. window.__CYBERSLEUTH_CONFIG__.apiBaseUrl - a static file that is served
-//      next to the bundle, so the URL can be changed without a rebuild.
-//   2. VITE_API_BASE_URL - inlined by Vite at build time.
-//   3. '/api' - the same origin, which is what the Netlify redirect rule and
-//      the Vite dev server proxy handle.
-const runtimeConfig = (window as any).__CYBERSLEUTH_CONFIG__ || {}
-const API_BASE_URL =
-  runtimeConfig.apiBaseUrl?.trim() ||
-  (import.meta as any).env.VITE_API_BASE_URL?.trim() ||
-  '/api'
+// The API location is never hard-coded. The candidate list comes from
+// `runtime-config.js` (a static file that is served next to the bundle, so it
+// can be changed without a rebuild), from the build-time VITE_API_BASE_URL
+// and from the same origin ('/api', which the Netlify redirect rule, the
+// tunnel and the Vite dev server all handle). The first candidate that
+// answers `/health` is used - see `runtimeConfig.ts`.
 
 const ACCESS_KEY = 'cybersleuth_access_token'
 const REFRESH_KEY = 'cybersleuth_refresh_token'
@@ -43,19 +43,22 @@ export const tokenStore = {
 }
 
 export const apiClient: AxiosInstance = axios.create({
-  baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
   timeout: 30000,
 })
 
-// Attach the bearer token on every request.
-apiClient.interceptors.request.use((config) => {
+// Attach the bearer token on every request, and resolve the API base (the
+// first candidate that answers `/health`).
+apiClient.interceptors.request.use(async (config) => {
   const token = tokenStore.access
   if (token) {
     config.headers = config.headers ?? {}
     ;(config.headers as any).Authorization = `Bearer ${token}`
+  }
+  if (!/^https?:\/\//i.test(config.url || '')) {
+    config.baseURL = await resolveApiBase()
   }
   return config
 })
@@ -67,8 +70,9 @@ async function tryRefresh(): Promise<boolean> {
   const refreshToken = tokenStore.refresh
   if (!refreshToken) return false
   try {
+    const base = await resolveApiBase()
     const response = await axios.post(
-      `${API_BASE_URL}/auth/refresh`,
+      `${base}/auth/refresh`,
       { refresh_token: refreshToken },
       { headers: { 'Content-Type': 'application/json' }, timeout: 10000 },
     )
@@ -84,6 +88,21 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const original = error.config as any
+
+    // No response at all means the API could not be reached: the address in
+    // the runtime configuration may be stale (the demo tunnel is restarted
+    // regularly and gets a new address). Forget the current base, let the
+    // resolver pick another candidate and try once more.
+    if (error.response === undefined && original && !original.__retriedBase) {
+      original.__retriedBase = true
+      invalidateApiBase()
+      try {
+        return await apiClient(original)
+      } catch {
+        // Fall through to the original error.
+      }
+    }
+
     if (error.response?.status === 401 && original && !original.__retried) {
       original.__retried = true
       refreshInFlight = refreshInFlight ?? tryRefresh()
@@ -99,6 +118,8 @@ apiClient.interceptors.response.use(
     return Promise.reject(error)
   },
 )
+
+export { apiBaseCandidates, SAME_ORIGIN_BASE }
 
 // ---------------------------------------------------------------------------
 // Auth

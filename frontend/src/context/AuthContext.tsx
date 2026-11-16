@@ -35,6 +35,59 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
+/**
+ * Turns an API error into a message that tells the truth.
+ *
+ * A request that never reached the API (the demo backend is behind a tunnel
+ * whose address changes, the network is down, the browser blocked the
+ * request) used to be reported as "Invalid email or password", which sent
+ * everybody looking for a typing error instead of the real problem. The same
+ * was true for a response that is not the API's JSON at all - for example
+ * the HTML error page of a static host that has no /api route.
+ */
+export function describeAuthError(err: any, fallback: string): string {
+  const response = err?.response
+
+  // No response: the request never made it to the API.
+  if (!response) {
+    const code = err?.code ? ` (${err.code})` : ''
+    return (
+      `Cannot reach the API${code}. The demo backend is offline or the address changed - ` +
+      'check the "API status" above, then try again.'
+    )
+  }
+
+  const status = response.status
+  const detail = response.data?.detail
+
+  // The API answered with its own error format.
+  if (typeof detail === 'string' && detail) {
+    if (status === 429) {
+      return 'Too many attempts from this address. Please wait a minute and try again.'
+    }
+    return detail
+  }
+
+  if (status === 429) {
+    return 'Too many attempts from this address. Please wait a minute and try again.'
+  }
+
+  if (status === 401) {
+    return fallback
+  }
+
+  if (status >= 500) {
+    return `The API reported an error (${status}). It may be restarting - please try again in a moment.`
+  }
+
+  // Any other status without the API's JSON body: the address does not point
+  // at the CyberSleuth API (a static host answers 404 with an HTML page).
+  return (
+    `The API answered ${status} instead of the expected response. ` +
+    'The configured address does not point at the CyberSleuth API - check the "API status" above.'
+  )
+}
+
 function toUser(payload: any): User {
   return {
     id: String(payload.id),
@@ -88,8 +141,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       tokenStore.save(res.data.access_token, res.data.refresh_token)
       setUser(toUser(res.data.user))
     } catch (err: any) {
-      const detail = err?.response?.data?.detail
-      throw new Error(typeof detail === 'string' ? detail : 'Invalid email or password')
+      throw new Error(describeAuthError(err, 'Invalid email or password'))
     }
   }, [])
 
@@ -108,7 +160,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const detail = err?.response?.data?.detail
       const validation = err?.response?.data?.errors?.[0]?.msg
       throw new Error(
-        typeof detail === 'string' ? detail : validation ?? 'Registration failed. Please try again.',
+        typeof detail === 'string'
+          ? detail
+          : validation ?? describeAuthError(err, 'Registration failed. Please try again.'),
       )
     }
   }, [])

@@ -9,13 +9,14 @@ import { useAuth } from '@/context/AuthContext'
 import { Button } from '@/ui/Button'
 import { Input } from '@/ui/Input'
 import { Card, CardHeader } from '@/ui/Card'
+import { ApiStatus } from '@/components/ApiStatus'
 import { ShieldCheck, ArrowRight } from 'lucide-react'
 export function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const { login } = useAuth()
   const navigate = useNavigate()
-  const { register, handleSubmit, formState: { errors } } = useForm<{
+  const { register, handleSubmit, setValue, formState: { errors } } = useForm<{
     email: string
     password: string
   }>()
@@ -55,8 +56,13 @@ export function LoginPage() {
           />
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <ApiStatus />
+
             {error && (
-              <div className="p-3 rounded-lg bg-error/10 border border-error/20 text-sm text-error">
+              <div
+                data-testid="login-error"
+                className="p-3 rounded-lg bg-error/10 border border-error/20 text-sm text-error"
+              >
                 {error}
               </div>
             )}
@@ -94,6 +100,30 @@ export function LoginPage() {
               )}
             </Button>
           </form>
+
+          <div className="mt-6 rounded-lg border border-white/10 bg-white/5 p-3 text-xs text-text-secondary">
+            <div className="mb-1 font-medium text-text-main">Demo accounts</div>
+            <button
+              type="button"
+              className="block w-full text-left hover:text-primary-cyan"
+              onClick={() => {
+                setValue('email', 'investigator@cybersleuth.ai')
+                setValue('password', 'Investigator!2026')
+              }}
+            >
+              investigator@cybersleuth.ai / Investigator!2026
+            </button>
+            <button
+              type="button"
+              className="block w-full text-left hover:text-primary-cyan"
+              onClick={() => {
+                setValue('email', 'supervisor@cybersleuth.ai')
+                setValue('password', 'Supervisor!2026')
+              }}
+            >
+              supervisor@cybersleuth.ai / Supervisor!2026
+            </button>
+          </div>
 
           <div className="mt-6 text-center">
             <p className="text-text-secondary/60 text-sm">

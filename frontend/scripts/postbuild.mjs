@@ -10,7 +10,7 @@
 // Netlify and the Vite preview server do their own SPA fallback, so the
 // extra file is harmless there.
 //
-// Usage: node scripts/postbuild.mjs
+// Usage: node scripts/postbuild.mjs [outDir]
 // =============================================================================
 
 import { copyFile, access } from 'node:fs/promises'
@@ -18,7 +18,8 @@ import { constants } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const distDir = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'dist')
+const outDir = process.argv[2] || 'dist'
+const distDir = resolve(dirname(fileURLToPath(import.meta.url)), '..', outDir)
 
 async function exists(path) {
   try {

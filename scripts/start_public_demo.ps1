@@ -179,10 +179,15 @@ function Start-Tunnel {
     return @{ Process = $process; Url = $null }
 }
 
-function Publish-ApiUrl($url) {
-    if (-not $Publish -or -not $url) { return }
+function Publish-ApiUrl($urls) {
+    if (-not $Publish) { return }
+    $list = @($urls | Where-Object { $_ })
+    if ($list.Count -eq 0) { return }
+
     Write-Host '  Publishing the address to GitHub Pages ...' -ForegroundColor DarkGray
-    & node (Join-Path $PSScriptRoot 'set_pages_api_url.mjs') --url $url | Out-Null
+    $arguments = @((Join-Path $PSScriptRoot 'set_pages_api_url.mjs'))
+    foreach ($url in $list) { $arguments += @('--url', $url) }
+    & node @arguments | Out-Null
 }
 
 Write-Step 'Starting the public tunnels'
@@ -202,13 +207,15 @@ Write-Host $appTunnel.Url -ForegroundColor Green
 if ($apiTunnel.Url) {
     Write-Host '  API         : ' -NoNewline
     Write-Host "$($apiTunnel.Url)/api" -ForegroundColor Green
-    Publish-ApiUrl $apiTunnel.Url
+    # Both tunnels serve the API, so both are published: if one of them is
+    # replaced, the published demo still finds a working address.
+    Publish-ApiUrl @($apiTunnel.Url, $appTunnel.Url)
 } else {
     # Without a separate API tunnel the Pages build has to use the app
     # tunnel, whose /api path is proxied to the backend.
     Write-Host '  API         : ' -NoNewline
     Write-Host "$($appTunnel.Url)/api (through the app tunnel)" -ForegroundColor Green
-    Publish-ApiUrl $appTunnel.Url
+    Publish-ApiUrl @($appTunnel.Url)
 }
 
 Set-Content -Path $OutputFile -Encoding utf8 -Value @(
@@ -257,7 +264,7 @@ while ($true) {
         $apiTunnel = Start-Tunnel -LocalPort $ApiPort -Name 'api'
         if ($apiTunnel.Url) {
             Write-Host "  API         : $($apiTunnel.Url)/api" -ForegroundColor Green
-            Publish-ApiUrl $apiTunnel.Url
+            Publish-ApiUrl @($apiTunnel.Url, $appTunnel.Url)
         }
     }
 }
