@@ -194,3 +194,6 @@ scripts/.public-demo.txt
 frontend/vite.config.js
 frontend/vite.config.d.ts
 frontend/tsconfig.node.tsbuildinfo
+
+# The packaged local release
+cybersleuth-ai-local.zip
