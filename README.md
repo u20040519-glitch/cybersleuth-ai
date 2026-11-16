@@ -173,24 +173,39 @@ Two public paths replace it:
    node scripts/set_pages_api_url.mjs --url https://<api>
    ```
 
-2. **The local stack behind a tunnel** — the API, the preview server and an
-   SSH tunnel run on this machine, so the whole application is reachable
-   from anywhere under a single HTTPS address:
+2. **The local stack behind a tunnel** — the API, the preview server and
+   Cloudflare quick tunnels run on this machine, so the whole application is
+   reachable from anywhere under a single HTTPS address:
 
    ```powershell
    powershell -ExecutionPolicy Bypass -File scripts/start_public_demo.ps1 -Publish
    powershell -ExecutionPolicy Bypass -File scripts/stop_public_demo.ps1
    ```
 
-   The supervisor reconnects the tunnel when the tunnel service drops the
-   connection and republishes the new address to the Pages build, so the
-   demo follows along. The tunnel address is written to
-   `scripts/.public-demo.txt`.
+   The supervisor keeps both tunnels alive, and republishes the new address
+   to the Pages build whenever a tunnel is replaced, so the demo follows
+   along. The address is written to `scripts/.public-demo.txt`.
 
    `scripts/start_public_demo.ps1` is the fastest way to see the finished
    product: the API runs against the embedded PostgreSQL, the seeded case
    (`CASE-2026-0147`) is already in the database, and the demo credentials
    are `investigator@cybersleuth.ai` / `Investigator!2026`.
+
+   `cloudflared` is used when it is installed (`%USERPROFILE%\bin\cloudflared.exe`);
+   without it the supervisor falls back to an SSH tunnel. The difference
+   matters for the Pages build: a Cloudflare tunnel forwards CORS preflight
+   requests to the origin, so the build may call the API from another
+   origin, while the SSH edge answers preflight requests itself.
+
+### Packing the project for another machine
+
+```bash
+python scripts/package_local_release.py
+```
+
+writes `cybersleuth-ai-local.zip`: every tracked source file plus the built
+frontend. The `.env` files are gitignored and therefore never part of the
+archive — copy `backend/.env.example` and `frontend/.env.example` instead.
 
 ### Environment variables
 

@@ -2,8 +2,8 @@
 
 **Project:** CyberSleuth AI — Multimodal AI-Powered Digital Forensics & Evidence Reconstruction Platform  
 **Version:** 1.0.0 (All 7 phases complete)  
-**Status:** Phases 1–7 implemented and verified end-to-end  
-**Last updated:** 2026-11-15
+**Status:** Phases 1–7 implemented and verified end-to-end; public demo published on GitHub Pages  
+**Last updated:** 2026-11-16
 
 ---
 
@@ -89,6 +89,59 @@
 
 ---
 
+## Public demo round (2026-11-16)
+
+### The Netlify wall
+- `inquisitive-tapioca-615ed3.netlify.app` still serves the previous build but
+  is in neither account that can be reached from this machine — deploying to
+  it answers *"Project not found"*.
+- `cybersleuth-ai.netlify.app` is live and matches the current build, but the
+  team **Desi Boyzzz** enforces **"Members only"** on every site it owns, so
+  every visitor gets a Netlify login (`401`). That is a team-level plan
+  setting: it cannot be switched per site and the API refuses to change it.
+
+### What replaced it
+| Path | Address | Notes |
+| --- | --- | --- |
+| GitHub Pages | `https://u20040519-glitch.github.io/cybersleuth-ai/` | Served from the repository itself, no access wall, survives a reboot of this machine. Published from the `gh-pages` branch by `scripts/deploy_github_pages.mjs`. |
+| Live stack (tunnel) | `https://<random>.trycloudflare.com` | API + preview server + Cloudflare quick tunnel on this machine. One address for the whole application. |
+
+- `VITE_BASE_PATH` sets the public base path; the React Router basename and
+  every asset URL follow it, so one build works on the root (Netlify) and in
+  a sub-path (Pages).
+- GitHub Pages has no rewrite rules, so the build also writes a `404.html`
+  copy of `index.html` — that is the SPA fallback, and deep links keep working.
+- `runtime-config.js` is served next to the bundle and holds the API address.
+  It can be changed with `scripts/set_pages_api_url.mjs` (GitHub API, no
+  rebuild), which is what the demo supervisor calls when a tunnel is replaced.
+
+### Fixes that were still open
+- **Login was broken** by migration `012`: it revoked `SELECT` on `auth.users`
+  for the application role, and the local auth provider verifies the Argon2
+  hash itself — registration and login answered `500 / permission denied for
+  table users`. Migration `013` adds the SECURITY DEFINER helpers
+  `public.local_auth_credentials(email)` and `public.local_auth_create_user()`,
+  so the role can read and create exactly one account without holding
+  `SELECT`/`INSERT` on the table. Supabase keeps using GoTrue there.
+- **The embedded PostgreSQL** sometimes failed to attach: `pg_ctl -w` gives up
+  after 10 s on a cold start, leaves the server running and leaves pgserver
+  with an empty handle (`assert self._postmaster_info is not None`). The
+  startup now retries and re-attaches to the running server.
+
+### Verification
+
+| Check | Result |
+| --- | --- |
+| `pytest -q` (backend) | **41 passed** |
+| `npm run build` (frontend) | ✅ built (783 kB JS / 228 kB gzip) + `404.html` |
+| `GET /api/health` (local + tunnel) | `{"status":"ok","database":"ok","storage":"ok",...}` |
+| Pages build | `200`, assets `200`, `runtime-config.js` points at the live API |
+| Cross-origin login from the Pages origin | `200` — CORS preflight answered by the API (`Access-Control-Allow-Origin`) |
+| Login through the app tunnel (same origin) | `200`, access + refresh token issued |
+| Seeded case | `CASE-2026-0147`, 6 evidence files, 7 module runs, correlation (18 events / 5 connections), 35 kB PDF report |
+
+---
+
 ## How to run
 
 ```bash
@@ -103,6 +156,15 @@ cd backend && ..\.venv310\Scripts\python.exe -m pytest -q
 
 # reseed (idempotent — safe to re-run)
 python scripts/seed_demo_data.py
+
+# public demo (API + preview server + tunnels, republishes the address)
+powershell -ExecutionPolicy Bypass -File scripts/start_public_demo.ps1 -Publish
+
+# publish the frontend to GitHub Pages
+node scripts/deploy_github_pages.mjs --api-base-url https://<api>/api
+
+# package the sources for another machine
+python scripts/package_local_release.py
 ```
 
 Seeded sign-ins: `investigator@cybersleuth.ai / Investigator!2026` and `supervisor@cybersleuth.ai / Supervisor!2026` (**rotate in production**).
