@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import logging
 import threading
+import time
 from pathlib import Path
 from typing import Optional
 
@@ -20,6 +21,15 @@ logger = logging.getLogger(__name__)
 
 _lock = threading.Lock()
 _server = None
+
+# pgserver starts the server with `pg_ctl -w`, which gives up after 10
+# seconds. On a cold start (first boot, antivirus scan, slow disk) the server
+# often needs longer, and the timeout leaves the postmaster running while the
+# handle inside pgserver is left empty - every later call then fails with
+# "assert self._postmaster_info is not None". Retrying re-attaches to the
+# already running server, so the API does not need a manual restart.
+START_ATTEMPTS = 4
+START_RETRY_DELAY_SECONDS = 3.0
 
 
 def _to_async_url(uri: str) -> str:
@@ -51,7 +61,28 @@ def ensure_local_postgres() -> str:
             data_dir = Path(settings.LOCAL_PG_DATA_DIR)
             data_dir.mkdir(parents=True, exist_ok=True)
             logger.info("Starting local PostgreSQL server in %s", data_dir)
-            _server = pgserver.get_server(str(data_dir))
+
+            last_error: Optional[BaseException] = None
+            for attempt in range(1, START_ATTEMPTS + 1):
+                try:
+                    _server = pgserver.get_server(str(data_dir))
+                    break
+                except Exception as exc:  # pragma: no cover - environment dependent
+                    last_error = exc
+                    logger.warning(
+                        "Local PostgreSQL did not come up on attempt %d/%d (%s)",
+                        attempt,
+                        START_ATTEMPTS,
+                        exc,
+                    )
+                    if attempt < START_ATTEMPTS:
+                        time.sleep(START_RETRY_DELAY_SECONDS)
+
+            if _server is None:
+                raise RuntimeError(
+                    f"Could not start the local PostgreSQL server in {data_dir}"
+                ) from last_error
+
             logger.info("Local PostgreSQL ready at %s", _server.get_uri())
         return _to_async_url(_server.get_uri())
 
