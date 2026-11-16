@@ -151,6 +151,7 @@ try {
   inWorktree(['commit', '-m', `deploy: publish the frontend to ${args.branch}`])
   inWorktree(['branch', '-f', args.branch, tempBranch])
   inWorktree(['push', '--force', 'origin', `${args.branch}:${args.branch}`])
+  inWorktree(['branch', '-D', tempBranch])
 
   console.log(`[4/4] pushed to ${args.branch}`)
 } finally {
