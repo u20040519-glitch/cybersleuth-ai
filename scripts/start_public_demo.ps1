@@ -56,6 +56,17 @@ function Test-Port($port) {
     return ($null -ne $connection)
 }
 
+# Only one supervisor may run: the Startup entry and a manual start would
+# otherwise open two sets of tunnels and fight over the address file. A named
+# mutex is the precise way to detect it - a search through the process list
+# would also match the shell that merely mentions this script.
+$mutex = New-Object System.Threading.Mutex($false, 'Local\CyberSleuthAiPublicDemo')
+$ownsMutex = $mutex.WaitOne(0)
+if (-not $ownsMutex) {
+    Write-Host 'The public demo is already running. Nothing to do.'
+    exit 0
+}
+
 function Find-Cloudflared {
     $command = Get-Command 'cloudflared' -ErrorAction SilentlyContinue
     if ($command) { return $command.Source }
@@ -67,9 +78,7 @@ function Find-Cloudflared {
 # ---------------------------------------------------------------------------
 # 1. the API and the preview server
 # ---------------------------------------------------------------------------
-if (Test-Port $ApiPort) {
-    Write-Step "The API already runs on 127.0.0.1:$ApiPort"
-} else {
+function Start-Api {
     Write-Step "Starting the API on 127.0.0.1:$ApiPort"
     Start-Process -FilePath $python `
         -ArgumentList '-m', 'uvicorn', 'app.main:app', '--host', '127.0.0.1', '--port', "$ApiPort", '--log-level', 'info' `
@@ -79,9 +88,7 @@ if (Test-Port $ApiPort) {
         -WindowStyle Hidden | Out-Null
 }
 
-if (Test-Port $Port) {
-    Write-Step "The preview server already runs on 127.0.0.1:$Port"
-} else {
+function Start-Preview {
     Write-Step "Starting the preview server on 127.0.0.1:$Port"
     Start-Process -FilePath 'npm.cmd' `
         -ArgumentList 'run', 'preview', '--', '--host', '127.0.0.1', '--port', "$Port" `
@@ -89,6 +96,18 @@ if (Test-Port $Port) {
         -RedirectStandardOutput (Join-Path $logDir 'preview.log') `
         -RedirectStandardError (Join-Path $logDir 'preview.err.log') `
         -WindowStyle Hidden | Out-Null
+}
+
+if (Test-Port $ApiPort) {
+    Write-Step "The API already runs on 127.0.0.1:$ApiPort"
+} else {
+    Start-Api
+}
+
+if (Test-Port $Port) {
+    Write-Step "The preview server already runs on 127.0.0.1:$Port"
+} else {
+    Start-Preview
 }
 
 Start-Sleep -Seconds 8
@@ -202,10 +221,22 @@ Write-Host '  The tunnels run until this machine is switched off.'
 Write-Host '  Stop everything with scripts/stop_public_demo.ps1'
 
 # ---------------------------------------------------------------------------
-# 3. keep the tunnels alive
+# 3. keep everything alive
 # ---------------------------------------------------------------------------
 while ($true) {
     Start-Sleep -Seconds 10
+
+    # The API and the preview server are watched as well: a crash there
+    # would break the demo just as badly as a dead tunnel.
+    if (-not (Test-Port $ApiPort)) {
+        Write-Step 'The API is not listening - restarting it'
+        Start-Api
+    }
+
+    if (-not (Test-Port $Port)) {
+        Write-Step 'The preview server is not listening - restarting it'
+        Start-Preview
+    }
 
     if ($appTunnel.Process.HasExited) {
         Write-Host 'The application tunnel died - restarting it in 10s' -ForegroundColor Yellow
