@@ -192,7 +192,11 @@ if ($apiTunnel.Url) {
     Publish-ApiUrl $appTunnel.Url
 }
 
-Set-Content -Path $OutputFile -Value $appTunnel.Url -Encoding utf8
+Set-Content -Path $OutputFile -Encoding utf8 -Value @(
+    "app: $($appTunnel.Url)"
+    "api: $(if ($apiTunnel.Url) { "$($apiTunnel.Url)/api" } else { "$($appTunnel.Url)/api" })"
+)
+
 Write-Host ''
 Write-Host '  The tunnels run until this machine is switched off.'
 Write-Host '  Stop everything with scripts/stop_public_demo.ps1'
@@ -208,7 +212,10 @@ while ($true) {
         Start-Sleep -Seconds 10
         $appTunnel = Start-Tunnel -LocalPort $Port -Name 'app'
         if ($appTunnel.Url) {
-            Set-Content -Path $OutputFile -Value $appTunnel.Url -Encoding utf8
+            Set-Content -Path $OutputFile -Encoding utf8 -Value @(
+                "app: $($appTunnel.Url)"
+                "api: $(if ($apiTunnel.Url) { "$($apiTunnel.Url)/api" } else { "$($appTunnel.Url)/api" })"
+            )
             Write-Host "  Public demo : $($appTunnel.Url)" -ForegroundColor Green
         }
     }
