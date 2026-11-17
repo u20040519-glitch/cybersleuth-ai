@@ -1,0 +1,11 @@
+# Netlify SPA fallback
+#
+# Any path that is not a real file is served by index.html so that
+# React Router client-side routes (e.g. /deeptrace, /investigations/<uuid>)
+# work on direct navigation and page refresh.
+#
+# This file is copied verbatim into the published dist/ directory by Vite,
+# and Netlify applies it automatically. It is a safety net in addition to
+# the [[redirects]] block in the root netlify.toml.
+
+/*    /index.html   200

@@ -1,0 +1,72 @@
+[
+  {
+    "timestamp": "2026-11-08T20:14:02Z",
+    "from": "Meena Kapoor",
+    "message": "Any update on the delivery app? It asked me to switch off Play Protect."
+  },
+  {
+    "timestamp": "2026-11-08T20:15:37Z",
+    "from": "R.",
+    "message": "Yeah. It is not on the Play Store. They said to install it from https://archive.newpipe.net/fdroid/repo because the store version is “outdated”."
+  },
+  {
+    "timestamp": "2026-11-08T20:16:05Z",
+    "from": "Meena Kapoor",
+    "message": "That is not an official source. Send me the exact link again."
+  },
+  {
+    "timestamp": "2026-11-08T20:16:41Z",
+    "from": "R.",
+    "message": "https://archive.newpipe.net/fdroid/repo - that is where the file came from. It was named like an update for the courier app."
+  },
+  {
+    "timestamp": "2026-11-08T20:17:30Z",
+    "from": "R.",
+    "message": "After install it wanted SMS and accessibility permission. Refused both, obviously."
+  },
+  {
+    "timestamp": "2026-11-08T20:18:12Z",
+    "from": "Meena Kapoor",
+    "message": "Do not enable anything. Where did you get it again - archive.newpipe.net?"
+  },
+  {
+    "timestamp": "2026-11-08T20:19:03Z",
+    "from": "R.",
+    "message": "Yes, https://archive.newpipe.net/fdroid/repo. Sha256 was offered on their page: 59c65a93d5ac09256e7cbfbe268676367ad7c5d65acc9255ac1c53f7bdb0ce2d"
+  },
+  {
+    "timestamp": "2026-11-09T09:02:44Z",
+    "from": "Meena Kapoor",
+    "message": "I pulled the APK off your phone with you. Uploading it for analysis now."
+  },
+  {
+    "timestamp": "2026-11-09T09:47:19Z",
+    "from": "Meena Kapoor",
+    "message": "It is signed but it wants BIND_ACCESSIBILITY_SERVICE. That is never legitimate for a courier app."
+  },
+  {
+    "timestamp": "2026-11-09T21:14:22Z",
+    "from": "R.",
+    "message": "Screenshot of the fake app taken just now, same time it started draining battery."
+  },
+  {
+    "timestamp": "2026-11-09T21:16:58Z",
+    "from": "R.",
+    "message": "It also keeps coming back after reboot. Camera and mic indicators fire at night."
+  },
+  {
+    "timestamp": "2026-11-10T07:33:10Z",
+    "from": "Meena Kapoor",
+    "message": "Second device now shows the same behaviour. Same installer source."
+  },
+  {
+    "timestamp": "2026-11-10T07:34:02Z",
+    "from": "Meena Kapoor",
+    "message": "Case opened. Everything goes into evidence tonight."
+  },
+  {
+    "timestamp": "2026-11-11T08:05:47Z",
+    "from": "R.",
+    "message": "Confirmed the installer came from that repo link. I saved the page offline too."
+  }
+]
