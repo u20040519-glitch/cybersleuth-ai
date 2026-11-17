@@ -89,7 +89,8 @@ console.log(`Base path  : ${basePath}`)
 // ---------------------------------------------------------------------------
 // 1. Build
 // ---------------------------------------------------------------------------
-console.log('\n[1/4] building the frontend ...')
+console.log('\n[1/4] building the static demo ...')
+console.log('      (VITE_DEMO_MODE=true - no backend, no tunnel required)')
 // On Windows npm is a .cmd shim, which cannot be executed directly.
 const isWindows = process.platform === 'win32'
 const npm = isWindows ? 'npm.cmd' : 'npm'
@@ -109,6 +110,7 @@ execFileSync(npm, ['run', 'build:pages'], {
     VITE_BASE_PATH: basePath,
     VITE_API_BASE_URL: args.apiBaseUrl,
     VITE_PAGES_CONFIG_URL: rawConfigUrl,
+    VITE_DEMO_MODE: 'true',
   },
 })
 

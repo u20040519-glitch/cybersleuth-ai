@@ -1,0 +1,9 @@
+CASE-2026-0147 - Investigator notes
+2026-11-09T09:47:19Z Meena Kapoor (complainant) reported a sideloaded installer was pushed to R.'s handset on 2026-11-08.
+2026-11-09T21:14:22Z Screen capture from the device retained as field-screen-photo.jpg; it matches the courier-app impersonation described.
+2026-11-09T21:20:00Z APK pulled from the device for static analysis. Do not execute. Hash logged at intake.
+2026-11-10T07:33:10Z Second handset presented the same behaviour after installing the same build; both reference https://f-droid.org documentation as cover story.
+2026-11-10T09:15:00Z Call recording from the complainant transcribed by VoiceProof for timing only; no speaker identification attempted.
+2026-11-11T08:05:47Z Complainant confirmed the installer page came from the archive.newpipe.net mirror discussed in the chat export.
+Reference organisations: NewPipe project, F-Droid. Contact for corroboration: mirror-maintainer@fdroid.org is NOT an official contact and must not be emailed.
+Next steps: supervisor review, correlation pass, preservation order for both handsets.

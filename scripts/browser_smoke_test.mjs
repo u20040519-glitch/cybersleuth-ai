@@ -142,14 +142,21 @@ try {
   await send('Runtime.enable')
   await send('Page.enable')
 
-  // 1. the page loads
-  await wait(4000)
+  // 1. the page loads (wait for the bundle, poll for the form)
+  let ready = false
+  for (let i = 0; i < 30 && !ready; i += 1) {
+    await wait(1000)
+    ready = await evaluate(
+      '!!(document.querySelector(\'input[name="email"]\') && document.querySelector(\'input[name="password"]\'))',
+    )
+  }
+  if (!ready) throw new Error('the login form did not render')
   const title = await evaluate('document.title')
   console.log(`page loaded: ${title}`)
 
-  // 2. the API status indicator
+  // 2. the API/demo status indicator
   const status = await evaluate(`(() => {
-    const el = [...document.querySelectorAll('[role="status"]')].find((n) => /API|Checking/.test(n.textContent || ''))
+    const el = document.querySelector('[role="status"]')
     return el ? el.textContent.trim().replace(/\\s+/g, ' ') : null
   })()`)
   console.log(`api status: ${status ?? 'no indicator found'}`)

@@ -8,16 +8,23 @@
 // =============================================================================
 
 import { useCallback, useEffect, useState } from 'react'
-import { Activity, Loader2 } from 'lucide-react'
+import { Activity, Loader2, Database } from 'lucide-react'
 import { currentApiBase, resolveApiBase } from '@/services/runtimeConfig'
 
-type Status = 'checking' | 'online' | 'offline'
+type Status = 'checking' | 'online' | 'offline' | 'demo'
 
 export function ApiStatus() {
   const [status, setStatus] = useState<Status>('checking')
   const [base, setBase] = useState<string | null>(null)
+  const isDemo =
+    ((import.meta as any).env.VITE_DEMO_MODE ?? '').toString().toLowerCase() === 'true'
 
   const check = useCallback(async () => {
+    if (isDemo) {
+      setStatus('demo')
+      setBase(null)
+      return
+    }
     setStatus('checking')
     try {
       const resolved = await resolveApiBase()
@@ -40,16 +47,37 @@ export function ApiStatus() {
 
   useEffect(() => {
     check()
+    if (isDemo) return
     const timer = setInterval(check, 20000)
     return () => clearInterval(timer)
-  }, [check])
+  }, [check, isDemo])
 
   const tone =
     status === 'online'
       ? 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10'
       : status === 'offline'
         ? 'text-error border-error/30 bg-error/10'
-        : 'text-text-secondary/70 border-white/10 bg-white/5'
+        : status === 'demo'
+          ? 'text-primary-cyan border-primary-blue/30 bg-primary-blue/10'
+          : 'text-text-secondary/70 border-white/10 bg-white/5'
+
+  if (status === 'demo') {
+    return (
+      <div
+        className="mb-4 flex items-start gap-2 rounded-lg border px-3 py-2 text-xs text-primary-cyan border-primary-blue/30 bg-primary-blue/10"
+        role="status"
+      >
+        <Database size={14} className="mt-0.5" />
+        <div className="min-w-0 flex-1">
+          <div className="font-medium">Static demo — no backend</div>
+          <div className="mt-0.5 opacity-80">
+            Cases, evidence, findings and the PDF report are the real seeded
+            case, frozen in the bundle. Uploads and new evidence stay in this browser.
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div
