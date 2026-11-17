@@ -162,40 +162,43 @@ from this machine.
 Two public paths replace it:
 
 1. **GitHub Pages** — the published demo lives at
-   `https://u20040519-glitch.github.io/cybersleuth-ai/`. It is served by the
-   repository itself, so it stays up when this machine is off.
+   `https://u20040519-glitch.github.io/cybersleuth-ai/`. It is a **self-contained demo**:
+   the service layer is answered from an embedded snapshot of the seeded case,
+   so the site works without the backend, without a tunnel and without this
+   machine being on. Login with the seeded credentials and everything works:
+   dashboard, investigations, evidence, all four forensic modules,
+   correlation, reports and the audit log.
 
    ```bash
-   # publish the frontend (build + push to the gh-pages branch)
-   node scripts/deploy_github_pages.mjs --api-base-url https://<api>/api
+   # rebuild and republish the demo (VITE_DEMO_MODE=true)
+   node scripts/deploy_github_pages.mjs
 
-   # move the published demo to another API without rebuilding
-   node scripts/set_pages_api_url.mjs --url https://<api>
+   # regenerate the snapshot after any new analysis work
+   node scripts/collect_demo_data.mjs
    ```
 
+   Uploads and newly created cases work in the demo too, but they only live
+   for the length of the browser session (as the site itself explains on the
+   login page).
+
 2. **The local stack behind a tunnel** — the API, the preview server and
-   Cloudflare quick tunnels run on this machine, so the whole application is
-   reachable from anywhere under a single HTTPS address:
+   Cloudflare quick tunnels run on this machine, so the whole application
+   (with the real backend) is reachable from anywhere:
 
    ```powershell
-   powershell -ExecutionPolicy Bypass -File scripts/start_public_demo.ps1 -Publish
+   powershell -ExecutionPolicy Bypass -File scripts/start_public_demo.ps1
    powershell -ExecutionPolicy Bypass -File scripts/stop_public_demo.ps1
    ```
 
-   The supervisor keeps both tunnels alive, and republishes the new address
-   to the Pages build whenever a tunnel is replaced, so the demo follows
-   along. The address is written to `scripts/.public-demo.txt`.
-
-   `scripts/start_public_demo.ps1` is the fastest way to see the finished
-   product: the API runs against the embedded PostgreSQL, the seeded case
-   (`CASE-2026-0147`) is already in the database, and the demo credentials
-   are `investigator@cybersleuth.ai` / `Investigator!2026`.
+   This is the *authentic* integration path: the login page, the SpyTrace
+   analysis and the report PDF are all computed for real, against the
+   embedded PostgreSQL with `CASE-2026-0147` already seeded. Demo
+   credentials: `investigator@cybersleuth.ai` / `Investigator!2026`.
 
    `cloudflared` is used when it is installed (`%USERPROFILE%\bin\cloudflared.exe`);
    without it the supervisor falls back to an SSH tunnel. The difference
-   matters for the Pages build: a Cloudflare tunnel forwards CORS preflight
-   requests to the origin, so the build may call the API from another
-   origin, while the SSH edge answers preflight requests itself.
+   matters for CORS: a Cloudflare tunnel forwards preflight requests to the
+   origin, while the SSH edge answers them itself.
 
 ### Packing the project for another machine
 

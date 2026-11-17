@@ -89,6 +89,35 @@
 
 ---
 
+## Public demo, self-contained round (2026-11-17)
+
+### The problem
+The Pages demo still depended on the live API, which lives on one machine
+behind a tunnel. Cloudflare drops the quick tunnel roughly every hour; the
+supervisor replaced it, but every replacement broke the published site until
+the next build landed. Visitors saw "Invalid email or password" or
+"API unreachable" — and the failure had nothing to do with the credentials.
+
+### The fix
+The published build is now the static demo (`VITE_DEMO_MODE=true`): the whole
+service layer is answered from an embedded snapshot of the seeded case,
+collected from the live API — real SHA-256 hashes, real findings, the real
+custody chain, the real correlation graph and the real PDF report.
+
+- `frontend/src/services/demoApi.ts` implements the full service layer;
+- `frontend/src/services/api.ts` is a build-time switch (live API ⇄ demo);
+- `ApiStatus` explains the mode on the login page;
+- `scripts/collect_demo_data.mjs` regenerates the snapshot and redacts any
+  machine paths from it;
+- uploads and newly created cases work, but live only in the browser.
+
+**Verification (headless Chrome, fresh profile, no backend):** login with the
+seeded credentials → dashboard → SpyTrace → pick the seeded case → the APK →
+run analysis → the findings panel renders ("Risk score 7", 13 findings,
+69 URLs). Every check passes on the published site itself.
+
+---
+
 ## Public demo round (2026-11-16)
 
 ### The Netlify wall
@@ -103,8 +132,8 @@
 ### What replaced it
 | Path | Address | Notes |
 | --- | --- | --- |
-| GitHub Pages | `https://u20040519-glitch.github.io/cybersleuth-ai/` | Served from the repository itself, no access wall, survives a reboot of this machine. Published from the `gh-pages` branch by `scripts/deploy_github_pages.mjs`. |
-| Live stack (tunnel) | `https://<random>.trycloudflare.com` | API + preview server + Cloudflare quick tunnel on this machine. One address for the whole application. |
+| GitHub Pages — **self-contained demo** | `https://u20040519-glitch.github.io/cybersleuth-ai/` | Served from the repository itself and needs **no backend, no tunnel and no account**. The app runs off an embedded snapshot of the seeded case (real hashes, findings, custody chain, audit log, PDF report). |
+| Live stack (tunnel) | `https://<random>.trycloudflare.com` | API + preview server + tunnels on this machine. Only needed when you want a genuinely live backend. |
 
 - `VITE_BASE_PATH` sets the public base path; the React Router basename and
   every asset URL follow it, so one build works on the root (Netlify) and in
