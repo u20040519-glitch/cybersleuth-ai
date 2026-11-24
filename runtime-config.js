@@ -2,5 +2,5 @@
 // The API addresses are tried in order; the first one that answers /health
 // is used. '/api' is the same origin and is always the last candidate.
 window.__CYBERSLEUTH_CONFIG__ = {
-  apiBaseUrls: ["https://degree-knitting-vcr-medal.trycloudflare.com/api","https://constraints-winds-enb-passage.trycloudflare.com/api","/api"],
+  apiBaseUrls: ["https://degree-knitting-vcr-medal.trycloudflare.com/api","https://districts-matter-constant-geographical.trycloudflare.com/api","/api"],
 }
